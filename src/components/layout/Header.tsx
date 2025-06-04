@@ -1,5 +1,5 @@
 
-import { Bell, Search, User } from 'lucide-react';
+import { Bell, Search, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -11,8 +11,28 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useAuth } from '@/hooks/useAuth';
 
 export function Header() {
+  const { profile, signOut } = useAuth();
+
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'admin': return 'destructive';
+      case 'agent': return 'default';
+      default: return 'secondary';
+    }
+  };
+
+  const getRoleName = (role: string) => {
+    switch (role) {
+      case 'admin': return 'Administrador';
+      case 'agent': return 'Agente';
+      default: return 'Usuario';
+    }
+  };
+
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
       <div className="flex h-16 items-center justify-between px-6">
@@ -44,20 +64,20 @@ export function Header() {
               <DropdownMenuSeparator />
               <DropdownMenuItem>
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">Nuevo ticket #001</p>
-                  <p className="text-xs text-muted-foreground">Problema con el sistema de correo</p>
+                  <p className="text-sm font-medium">Nuevo ticket asignado</p>
+                  <p className="text-xs text-muted-foreground">Se te ha asignado un nuevo ticket</p>
                 </div>
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">Ticket #024 resuelto</p>
-                  <p className="text-xs text-muted-foreground">El agente Juan cerró el ticket</p>
+                  <p className="text-sm font-medium">Ticket actualizado</p>
+                  <p className="text-xs text-muted-foreground">Un cliente respondió a su ticket</p>
                 </div>
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">Nuevo artículo publicado</p>
-                  <p className="text-xs text-muted-foreground">Guía de configuración VPN</p>
+                  <p className="text-sm font-medium">Artículo publicado</p>
+                  <p className="text-xs text-muted-foreground">Nuevo artículo en la base de conocimientos</p>
                 </div>
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -66,18 +86,32 @@ export function Header() {
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <User className="h-4 w-4 mr-2" />
-                <span className="hidden md:block">Admin</span>
+              <Button variant="ghost" size="sm" className="flex items-center space-x-2">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback>
+                    {profile?.full_name?.split(' ').map(n => n[0]).join('') || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="hidden md:flex flex-col items-start">
+                  <span className="text-sm font-medium">{profile?.full_name || 'Usuario'}</span>
+                  <Badge variant={getRoleColor(profile?.role || 'user')} className="text-xs">
+                    {getRoleName(profile?.role || 'user')}
+                  </Badge>
+                </div>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Perfil</DropdownMenuItem>
-              <DropdownMenuItem>Configuración</DropdownMenuItem>
+              <DropdownMenuItem>
+                <User className="mr-2 h-4 w-4" />
+                Perfil
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>Cerrar Sesión</DropdownMenuItem>
+              <DropdownMenuItem onClick={signOut}>
+                <LogOut className="mr-2 h-4 w-4" />
+                Cerrar Sesión
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,107 +9,69 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Plus, 
   Search, 
-  Filter, 
   Eye, 
   Edit, 
   Calendar,
   User,
-  Clock
+  Clock,
+  Loader2
 } from 'lucide-react';
-
-const tickets: TicketType[] = [
-  {
-    id: '001',
-    title: 'Problema con correo corporativo',
-    description: 'No puedo acceder a mi cuenta de correo desde Outlook',
-    priority: 'Alta',
-    status: 'Abierto',
-    category: 'Email',
-    customer: 'María García',
-    assignee: 'Juan Pérez',
-    created: '2024-06-04 09:30',
-    updated: '2024-06-04 10:15'
-  },
-  {
-    id: '002',
-    title: 'Error en sistema de ventas',
-    description: 'El sistema se bloquea al intentar generar reportes',
-    priority: 'Media',
-    status: 'En Progreso',
-    category: 'Software',
-    customer: 'Juan López',
-    assignee: 'Ana Martín',
-    created: '2024-06-04 08:45',
-    updated: '2024-06-04 09:20'
-  },
-  {
-    id: '003',
-    title: 'Solicitud de acceso VPN',
-    description: 'Necesito acceso VPN para trabajar desde casa',
-    priority: 'Baja',
-    status: 'Pendiente',
-    category: 'Red',
-    customer: 'Ana Martín',
-    assignee: null,
-    created: '2024-06-03 16:20',
-    updated: '2024-06-03 16:20'
-  },
-  {
-    id: '004',
-    title: 'Configuración de impresora',
-    description: 'No puedo imprimir desde mi equipo',
-    priority: 'Media',
-    status: 'Resuelto',
-    category: 'Hardware',
-    customer: 'Carlos Ruiz',
-    assignee: 'Juan Pérez',
-    created: '2024-06-03 14:30',
-    updated: '2024-06-04 11:00'
-  }
-];
-
-type TicketType = {
-  id: string;
-  title: string;
-  description: string;
-  priority: string;
-  status: string;
-  category: string;
-  customer: string;
-  assignee: string | null;
-  created: string;
-  updated: string;
-};
+import { useTickets, Ticket } from '@/hooks/useTickets';
+import { useAuth } from '@/hooks/useAuth';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const getPriorityColor = (priority: string) => {
   switch (priority) {
-    case 'Alta': return 'destructive';
-    case 'Media': return 'default';
-    case 'Baja': return 'secondary';
+    case 'alta': return 'destructive';
+    case 'media': return 'default';
+    case 'baja': return 'secondary';
     default: return 'default';
   }
 };
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'Abierto': return 'destructive';
-    case 'En Progreso': return 'default';
-    case 'Pendiente': return 'secondary';
-    case 'Resuelto': return 'outline';
-    case 'Cerrado': return 'secondary';
+    case 'abierto': return 'destructive';
+    case 'en_progreso': return 'default';
+    case 'pendiente': return 'secondary';
+    case 'resuelto': return 'outline';
+    case 'cerrado': return 'secondary';
     default: return 'default';
   }
 };
 
+const getStatusLabel = (status: string) => {
+  switch (status) {
+    case 'abierto': return 'Abierto';
+    case 'en_progreso': return 'En Progreso';
+    case 'pendiente': return 'Pendiente';
+    case 'resuelto': return 'Resuelto';
+    case 'cerrado': return 'Cerrado';
+    default: return status;
+  }
+};
+
+const getPriorityLabel = (priority: string) => {
+  switch (priority) {
+    case 'alta': return 'Alta';
+    case 'media': return 'Media';
+    case 'baja': return 'Baja';
+    default: return priority;
+  }
+};
+
 export function TicketList() {
+  const { data: tickets = [], isLoading, error } = useTickets();
+  const { hasRole } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPriority, setFilterPriority] = useState('all');
 
   const filteredTickets = tickets.filter(ticket => {
     const matchesSearch = ticket.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         ticket.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         ticket.id.includes(searchTerm);
+                         ticket.profiles_customer.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         ticket.ticket_number.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || ticket.status === filterStatus;
     const matchesPriority = filterPriority === 'all' || ticket.priority === filterPriority;
     
@@ -120,6 +83,26 @@ export function TicketList() {
     return tickets.filter(ticket => ticket.status === status);
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Cargando tickets...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <h3 className="text-lg font-semibold text-destructive">Error al cargar tickets</h3>
+          <p className="text-muted-foreground">Por favor, intenta nuevamente</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -130,10 +113,12 @@ export function TicketList() {
             Administra y da seguimiento a todos los tickets del sistema
           </p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo Ticket
-        </Button>
+        {hasRole(['admin', 'agent', 'user']) && (
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Nuevo Ticket
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -160,11 +145,11 @@ export function TicketList() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos los estados</SelectItem>
-                <SelectItem value="Abierto">Abierto</SelectItem>
-                <SelectItem value="En Progreso">En Progreso</SelectItem>
-                <SelectItem value="Pendiente">Pendiente</SelectItem>
-                <SelectItem value="Resuelto">Resuelto</SelectItem>
-                <SelectItem value="Cerrado">Cerrado</SelectItem>
+                <SelectItem value="abierto">Abierto</SelectItem>
+                <SelectItem value="en_progreso">En Progreso</SelectItem>
+                <SelectItem value="pendiente">Pendiente</SelectItem>
+                <SelectItem value="resuelto">Resuelto</SelectItem>
+                <SelectItem value="cerrado">Cerrado</SelectItem>
               </SelectContent>
             </Select>
             <Select value={filterPriority} onValueChange={setFilterPriority}>
@@ -173,9 +158,9 @@ export function TicketList() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas las prioridades</SelectItem>
-                <SelectItem value="Alta">Alta</SelectItem>
-                <SelectItem value="Media">Media</SelectItem>
-                <SelectItem value="Baja">Baja</SelectItem>
+                <SelectItem value="alta">Alta</SelectItem>
+                <SelectItem value="media">Media</SelectItem>
+                <SelectItem value="baja">Baja</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -188,41 +173,56 @@ export function TicketList() {
           <TabsTrigger value="all">
             Todos ({tickets.length})
           </TabsTrigger>
-          <TabsTrigger value="Abierto">
-            Abiertos ({getTicketsByStatus('Abierto').length})
+          <TabsTrigger value="abierto">
+            Abiertos ({getTicketsByStatus('abierto').length})
           </TabsTrigger>
-          <TabsTrigger value="En Progreso">
-            En Progreso ({getTicketsByStatus('En Progreso').length})
+          <TabsTrigger value="en_progreso">
+            En Progreso ({getTicketsByStatus('en_progreso').length})
           </TabsTrigger>
-          <TabsTrigger value="Pendiente">
-            Pendientes ({getTicketsByStatus('Pendiente').length})
+          <TabsTrigger value="pendiente">
+            Pendientes ({getTicketsByStatus('pendiente').length})
           </TabsTrigger>
-          <TabsTrigger value="Resuelto">
-            Resueltos ({getTicketsByStatus('Resuelto').length})
+          <TabsTrigger value="resuelto">
+            Resueltos ({getTicketsByStatus('resuelto').length})
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="all">
           <TicketTable tickets={filteredTickets} />
         </TabsContent>
-        <TabsContent value="Abierto">
-          <TicketTable tickets={getTicketsByStatus('Abierto')} />
+        <TabsContent value="abierto">
+          <TicketTable tickets={getTicketsByStatus('abierto')} />
         </TabsContent>
-        <TabsContent value="En Progreso">
-          <TicketTable tickets={getTicketsByStatus('En Progreso')} />
+        <TabsContent value="en_progreso">
+          <TicketTable tickets={getTicketsByStatus('en_progreso')} />
         </TabsContent>
-        <TabsContent value="Pendiente">
-          <TicketTable tickets={getTicketsByStatus('Pendiente')} />
+        <TabsContent value="pendiente">
+          <TicketTable tickets={getTicketsByStatus('pendiente')} />
         </TabsContent>
-        <TabsContent value="Resuelto">
-          <TicketTable tickets={getTicketsByStatus('Resuelto')} />
+        <TabsContent value="resuelto">
+          <TicketTable tickets={getTicketsByStatus('resuelto')} />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
 
-function TicketTable({ tickets }: { tickets: TicketType[] }) {
+function TicketTable({ tickets }: { tickets: Ticket[] }) {
+  const { hasRole } = useAuth();
+
+  if (tickets.length === 0) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <h3 className="text-lg font-semibold mb-2">No hay tickets</h3>
+          <p className="text-muted-foreground text-center">
+            No se encontraron tickets que coincidan con los filtros aplicados.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardContent className="p-0">
@@ -235,35 +235,39 @@ function TicketTable({ tickets }: { tickets: TicketType[] }) {
               <div className="flex items-start space-x-4 flex-1">
                 <div className="flex flex-col space-y-1 flex-1">
                   <div className="flex items-center space-x-2">
-                    <span className="font-mono text-sm text-muted-foreground">#{ticket.id}</span>
+                    <span className="font-mono text-sm text-muted-foreground">#{ticket.ticket_number}</span>
                     <Badge variant={getPriorityColor(ticket.priority)}>
-                      {ticket.priority}
+                      {getPriorityLabel(ticket.priority)}
                     </Badge>
                     <Badge variant={getStatusColor(ticket.status)}>
-                      {ticket.status}
+                      {getStatusLabel(ticket.status)}
                     </Badge>
-                    <Badge variant="outline">{ticket.category}</Badge>
+                    {ticket.ticket_categories && (
+                      <Badge variant="outline" style={{ color: ticket.ticket_categories.color }}>
+                        {ticket.ticket_categories.name}
+                      </Badge>
+                    )}
                   </div>
                   <h3 className="font-semibold text-lg">{ticket.title}</h3>
                   <p className="text-muted-foreground text-sm">{ticket.description}</p>
                   <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-2">
                     <div className="flex items-center">
                       <User className="mr-1 h-3 w-3" />
-                      Cliente: {ticket.customer}
+                      Cliente: {ticket.profiles_customer.full_name}
                     </div>
-                    {ticket.assignee && (
+                    {ticket.profiles_assignee && (
                       <div className="flex items-center">
                         <User className="mr-1 h-3 w-3" />
-                        Asignado: {ticket.assignee}
+                        Asignado: {ticket.profiles_assignee.full_name}
                       </div>
                     )}
                     <div className="flex items-center">
                       <Calendar className="mr-1 h-3 w-3" />
-                      Creado: {ticket.created}
+                      Creado: {format(new Date(ticket.created_at), 'dd/MM/yyyy HH:mm', { locale: es })}
                     </div>
                     <div className="flex items-center">
                       <Clock className="mr-1 h-3 w-3" />
-                      Actualizado: {ticket.updated}
+                      Actualizado: {format(new Date(ticket.updated_at), 'dd/MM/yyyy HH:mm', { locale: es })}
                     </div>
                   </div>
                 </div>
@@ -273,10 +277,12 @@ function TicketTable({ tickets }: { tickets: TicketType[] }) {
                   <Eye className="h-4 w-4 mr-1" />
                   Ver
                 </Button>
-                <Button variant="ghost" size="sm">
-                  <Edit className="h-4 w-4 mr-1" />
-                  Editar
-                </Button>
+                {hasRole(['admin', 'agent']) && (
+                  <Button variant="ghost" size="sm">
+                    <Edit className="h-4 w-4 mr-1" />
+                    Editar
+                  </Button>
+                )}
               </div>
             </div>
           ))}
