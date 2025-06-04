@@ -2,14 +2,18 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import type { Database } from '@/integrations/supabase/types';
+
+type TicketPriority = Database['public']['Enums']['ticket_priority'];
+type TicketStatus = Database['public']['Enums']['ticket_status'];
 
 export interface Ticket {
   id: string;
   ticket_number: string;
   title: string;
   description: string;
-  priority: 'baja' | 'media' | 'alta';
-  status: 'abierto' | 'en_progreso' | 'pendiente' | 'resuelto' | 'cerrado';
+  priority: TicketPriority;
+  status: TicketStatus;
   customer_id: string;
   assignee_id?: string;
   category_id?: string;
@@ -69,7 +73,7 @@ export function useCreateTicket() {
     mutationFn: async (ticketData: {
       title: string;
       description: string;
-      priority: string;
+      priority: TicketPriority;
       category_id?: string;
       customer_id: string;
     }) => {

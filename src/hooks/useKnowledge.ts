@@ -2,13 +2,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import type { Database } from '@/integrations/supabase/types';
+
+type ArticleCategory = Database['public']['Enums']['article_category'];
 
 export interface KnowledgeArticle {
   id: string;
   title: string;
   summary?: string;
   content: string;
-  category: 'email' | 'red' | 'hardware' | 'software' | 'seguridad';
+  category: ArticleCategory;
   author_id: string;
   is_published: boolean;
   views: number;
@@ -58,7 +61,7 @@ export function useCreateArticle() {
       title: string;
       summary?: string;
       content: string;
-      category: string;
+      category: ArticleCategory;
       author_id: string;
       is_published?: boolean;
     }) => {
@@ -93,7 +96,7 @@ export function useIncrementViews() {
     mutationFn: async (articleId: string) => {
       const { error } = await supabase
         .from('knowledge_articles')
-        .update({ views: supabase.sql`views + 1` })
+        .update({ views: 1 })
         .eq('id', articleId);
 
       if (error) throw error;
