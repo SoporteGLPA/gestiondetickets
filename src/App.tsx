@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,6 +13,7 @@ import Knowledge from "./pages/Knowledge";
 import Users from "./pages/Users";
 import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
+import TicketDetail from "./pages/TicketDetail";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +33,11 @@ const App = () => (
             }>
               <Route index element={<Index />} />
               <Route path="tickets" element={<Tickets />} />
+              <Route path="tickets/:id" element={
+                <ProtectedRoute>
+                  <TicketDetail />
+                </ProtectedRoute>
+              } />
               <Route path="knowledge" element={<Knowledge />} />
               <Route path="users" element={
                 <ProtectedRoute requiredRoles={['admin', 'agent']}>

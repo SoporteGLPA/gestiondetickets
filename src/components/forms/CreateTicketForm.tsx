@@ -1,0 +1,161 @@
+
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useCreateTicket } from '@/hooks/useTickets';
+import { useCategories } from '@/hooks/useCategories';
+import { useAuth } from '@/hooks/useAuth';
+
+const ticketSchema = z.object({
+  title: z.string().min(1, 'El título es requerido'),
+  description: z.string().min(1, 'La descripción es requerida'),
+  priority: z.enum(['baja', 'media', 'alta']),
+  category_id: z.string().optional(),
+});
+
+type TicketFormData = z.infer<typeof ticketSchema>;
+
+interface CreateTicketFormProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) {
+  const { user } = useAuth();
+  const createTicketMutation = useCreateTicket();
+  const { data: categories } = useCategories();
+
+  const form = useForm<TicketFormData>({
+    resolver: zodResolver(ticketSchema),
+    defaultValues: {
+      title: '',
+      description: '',
+      priority: 'media',
+      category_id: '',
+    },
+  });
+
+  const onSubmit = async (data: TicketFormData) => {
+    if (!user) return;
+
+    await createTicketMutation.mutateAsync({
+      ...data,
+      customer_id: user.id,
+    });
+
+    form.reset();
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Crear Nuevo Ticket</DialogTitle>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Título</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ingrese el título del ticket" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Descripción</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Describa el problema detalladamente" 
+                      className="min-h-[100px]"
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="priority"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Prioridad</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccione la prioridad" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="baja">Baja</SelectItem>
+                      <SelectItem value="media">Media</SelectItem>
+                      <SelectItem value="alta">Alta</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="category_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Categoría</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccione una categoría" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {categories?.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="flex justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={createTicketMutation.isPending}
+              >
+                {createTicketMutation.isPending ? 'Creando...' : 'Crear Ticket'}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}

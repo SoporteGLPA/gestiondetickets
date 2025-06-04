@@ -6,7 +6,7 @@ import type { Database } from '@/integrations/supabase/types';
 
 type ArticleCategory = Database['public']['Enums']['article_category'];
 
-export interface KnowledgeArticle {
+export interface Article {
   id: string;
   title: string;
   summary?: string;
@@ -14,13 +14,14 @@ export interface KnowledgeArticle {
   category: ArticleCategory;
   author_id: string;
   is_published: boolean;
-  views: number;
-  rating: number;
+  rating?: number;
   votes_count: number;
+  views: number;
   created_at: string;
   updated_at: string;
-  profiles: {
+  profiles?: {
     full_name: string;
+    email: string;
   };
 }
 
@@ -34,9 +35,9 @@ export function useKnowledgeArticles() {
         .from('knowledge_articles')
         .select(`
           *,
-          profiles(full_name)
+          profiles:author_id(full_name, email)
         `)
-        .order('updated_at', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (error) {
         toast({
@@ -47,7 +48,7 @@ export function useKnowledgeArticles() {
         throw error;
       }
 
-      return data as KnowledgeArticle[];
+      return data as Article[];
     },
   });
 }
@@ -63,11 +64,11 @@ export function useCreateArticle() {
       content: string;
       category: ArticleCategory;
       author_id: string;
-      is_published?: boolean;
+      is_published: boolean;
     }) => {
       const { data, error } = await supabase
         .from('knowledge_articles')
-        .insert([articleData])
+        .insert(articleData)
         .select()
         .single();
 
@@ -87,19 +88,6 @@ export function useCreateArticle() {
         title: "Error",
         description: "No se pudo crear el artículo",
       });
-    },
-  });
-}
-
-export function useIncrementViews() {
-  return useMutation({
-    mutationFn: async (articleId: string) => {
-      const { error } = await supabase
-        .from('knowledge_articles')
-        .update({ views: 1 })
-        .eq('id', articleId);
-
-      if (error) throw error;
     },
   });
 }
