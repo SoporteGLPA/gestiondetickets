@@ -89,8 +89,8 @@ const categories = [
   { name: 'Seguridad', count: articles.filter(a => a.category === 'Seguridad').length },
 ];
 
-const getCategoryColor = (category: string) => {
-  const colors: { [key: string]: string } = {
+const getCategoryColor = (category: string): "default" | "destructive" | "outline" | "secondary" => {
+  const colors: { [key: string]: "default" | "destructive" | "outline" | "secondary" } = {
     'Email': 'default',
     'Red': 'secondary',
     'Hardware': 'outline',

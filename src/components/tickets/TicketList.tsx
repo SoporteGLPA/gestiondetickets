@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,7 +16,7 @@ import {
   Clock
 } from 'lucide-react';
 
-const tickets = [
+const tickets: TicketType[] = [
   {
     id: '001',
     title: 'Problema con correo corporativo',
@@ -67,6 +66,19 @@ const tickets = [
     updated: '2024-06-04 11:00'
   }
 ];
+
+type TicketType = {
+  id: string;
+  title: string;
+  description: string;
+  priority: string;
+  status: string;
+  category: string;
+  customer: string;
+  assignee: string | null;
+  created: string;
+  updated: string;
+};
 
 const getPriorityColor = (priority: string) => {
   switch (priority) {
@@ -210,7 +222,7 @@ export function TicketList() {
   );
 }
 
-function TicketTable({ tickets }: { tickets: typeof tickets }) {
+function TicketTable({ tickets }: { tickets: TicketType[] }) {
   return (
     <Card>
       <CardContent className="p-0">
