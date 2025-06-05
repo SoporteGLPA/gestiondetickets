@@ -43,7 +43,17 @@ export function CreateUserForm({ open, onOpenChange }: CreateUserFormProps) {
   });
 
   const onSubmit = async (data: UserFormData) => {
-    await createUserMutation.mutateAsync(data);
+    // Ensure all required fields are present
+    const userData = {
+      full_name: data.full_name,
+      email: data.email,
+      role: data.role,
+      department: data.department,
+      phone: data.phone,
+      is_active: data.is_active,
+    };
+
+    await createUserMutation.mutateAsync(userData);
     form.reset();
     onOpenChange(false);
   };

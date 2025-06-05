@@ -46,11 +46,17 @@ export function CreateArticleForm({ open, onOpenChange }: CreateArticleFormProps
   const onSubmit = async (data: ArticleFormData) => {
     if (!user) return;
 
-    await createArticleMutation.mutateAsync({
-      ...data,
+    // Ensure all required fields are present
+    const articleData = {
+      title: data.title,
+      summary: data.summary,
+      content: data.content,
+      category: data.category,
+      is_published: data.is_published,
       author_id: user.id,
-    });
+    };
 
+    await createArticleMutation.mutateAsync(articleData);
     form.reset();
     onOpenChange(false);
   };

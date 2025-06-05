@@ -45,11 +45,16 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
   const onSubmit = async (data: TicketFormData) => {
     if (!user) return;
 
-    await createTicketMutation.mutateAsync({
-      ...data,
+    // Ensure all required fields are present
+    const ticketData = {
+      title: data.title,
+      description: data.description,
+      priority: data.priority,
+      category_id: data.category_id || undefined,
       customer_id: user.id,
-    });
+    };
 
+    await createTicketMutation.mutateAsync(ticketData);
     form.reset();
     onOpenChange(false);
   };
