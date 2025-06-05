@@ -8,12 +8,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
-import { useCreateUser } from '@/hooks/useUsers';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { User } from '@/hooks/useUsers';
 
 const userSchema = z.object({
   full_name: z.string().min(1, 'El nombre es requerido'),
   email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres'),
   role: z.enum(['admin', 'agent', 'user']),
   department: z.string().optional(),
   is_active: z.boolean(),
@@ -21,47 +23,85 @@ const userSchema = z.object({
 
 type UserFormData = z.infer<typeof userSchema>;
 
-interface CreateUserFormProps {
+interface EditUserFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  user: User | null;
 }
 
-export function CreateUserForm({ open, onOpenChange }: CreateUserFormProps) {
-  const createUserMutation = useCreateUser();
+export function EditUserForm({ open, onOpenChange, user }: EditUserFormProps) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const form = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
     defaultValues: {
-      full_name: '',
-      email: '',
-      password: '',
-      role: 'user',
-      department: '',
-      is_active: true,
+      full_name: user?.full_name || '',
+      email: user?.email || '',
+      role: user?.role || 'user',
+      department: user?.department || '',
+      is_active: user?.is_active ?? true,
+    },
+  });
+
+  // Reset form when user changes
+  if (user && form.getValues().email !== user.email) {
+    form.reset({
+      full_name: user.full_name,
+      email: user.email,
+      role: user.role,
+      department: user.department || '',
+      is_active: user.is_active,
+    });
+  }
+
+  const updateUserMutation = useMutation({
+    mutationFn: async (userData: UserFormData) => {
+      if (!user) throw new Error('No user selected');
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: userData.full_name,
+          email: userData.email,
+          role: userData.role,
+          department: userData.department,
+          is_active: userData.is_active,
+        })
+        .eq('id', user.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast({
+        title: "Usuario actualizado",
+        description: "El usuario ha sido actualizado exitosamente",
+      });
+      form.reset();
+      onOpenChange(false);
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo actualizar el usuario",
+      });
     },
   });
 
   const onSubmit = async (data: UserFormData) => {
-    // Ensure all required fields are present
-    const userData = {
-      full_name: data.full_name,
-      email: data.email,
-      password: data.password,
-      role: data.role,
-      department: data.department,
-      is_active: data.is_active,
-    };
-
-    await createUserMutation.mutateAsync(userData);
-    form.reset();
-    onOpenChange(false);
+    await updateUserMutation.mutateAsync(data);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Crear Nuevo Usuario</DialogTitle>
+          <DialogTitle>Editar Usuario</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -87,20 +127,6 @@ export function CreateUserForm({ open, onOpenChange }: CreateUserFormProps) {
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input type="email" placeholder="usuario@empresa.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Contraseña</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="Mínimo 6 caracteres" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -171,9 +197,9 @@ export function CreateUserForm({ open, onOpenChange }: CreateUserFormProps) {
               </Button>
               <Button 
                 type="submit" 
-                disabled={createUserMutation.isPending}
+                disabled={updateUserMutation.isPending}
               >
-                {createUserMutation.isPending ? 'Creando...' : 'Crear Usuario'}
+                {updateUserMutation.isPending ? 'Actualizando...' : 'Actualizar Usuario'}
               </Button>
             </div>
           </form>

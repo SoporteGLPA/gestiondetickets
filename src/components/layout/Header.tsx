@@ -13,9 +13,22 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
+import { useTickets } from '@/hooks/useTickets';
+import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 export function Header() {
   const { profile, signOut } = useAuth();
+  const { data: tickets = [] } = useTickets();
+
+  // Get recent tickets for notifications
+  const recentTickets = tickets
+    .filter(ticket => {
+      const createdAt = new Date(ticket.created_at);
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      return createdAt > oneDayAgo && ticket.status === 'abierto';
+    })
+    .slice(0, 5);
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -54,32 +67,38 @@ export function Header() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="relative">
                 <Bell className="h-4 w-4" />
-                <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs">
-                  3
-                </Badge>
+                {recentTickets.length > 0 && (
+                  <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 text-xs">
+                    {recentTickets.length}
+                  </Badge>
+                )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80">
               <DropdownMenuLabel>Notificaciones</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">Nuevo ticket asignado</p>
-                  <p className="text-xs text-muted-foreground">Se te ha asignado un nuevo ticket</p>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">Ticket actualizado</p>
-                  <p className="text-xs text-muted-foreground">Un cliente respondió a su ticket</p>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">Artículo publicado</p>
-                  <p className="text-xs text-muted-foreground">Nuevo artículo en la base de conocimientos</p>
-                </div>
-              </DropdownMenuItem>
+              {recentTickets.length > 0 ? (
+                recentTickets.map((ticket) => (
+                  <DropdownMenuItem key={ticket.id}>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium">Nuevo ticket: #{ticket.ticket_number}</p>
+                      <p className="text-xs text-muted-foreground">{ticket.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(new Date(ticket.created_at), { 
+                          addSuffix: true, 
+                          locale: es 
+                        })}
+                      </p>
+                    </div>
+                  </DropdownMenuItem>
+                ))
+              ) : (
+                <DropdownMenuItem>
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm text-muted-foreground">No hay notificaciones nuevas</p>
+                  </div>
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
 

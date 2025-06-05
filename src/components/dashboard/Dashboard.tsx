@@ -14,53 +14,73 @@ import {
   Eye
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-
-const ticketData = [
-  { name: 'Ene', total: 45, resueltos: 38 },
-  { name: 'Feb', total: 52, resueltos: 41 },
-  { name: 'Mar', total: 48, resueltos: 44 },
-  { name: 'Abr', total: 61, resueltos: 52 },
-  { name: 'May', total: 55, resueltos: 49 },
-  { name: 'Jun', total: 67, resueltos: 58 },
-];
-
-const responseTimeData = [
-  { name: 'Lun', tiempo: 2.5 },
-  { name: 'Mar', tiempo: 1.8 },
-  { name: 'Mié', tiempo: 3.2 },
-  { name: 'Jue', tiempo: 2.1 },
-  { name: 'Vie', tiempo: 1.9 },
-  { name: 'Sáb', tiempo: 4.1 },
-  { name: 'Dom', tiempo: 3.8 },
-];
-
-const recentTickets = [
-  { id: '001', title: 'Problema con correo corporativo', priority: 'Alta', status: 'Abierto', customer: 'María García', time: '5 min' },
-  { id: '002', title: 'Error en sistema de ventas', priority: 'Media', status: 'En Progreso', customer: 'Juan López', time: '15 min' },
-  { id: '003', title: 'Solicitud de acceso VPN', priority: 'Baja', status: 'Pendiente', customer: 'Ana Martín', time: '1 hora' },
-  { id: '004', title: 'Configuración de impresora', priority: 'Media', status: 'Resuelto', customer: 'Carlos Ruiz', time: '2 horas' },
-];
+import { useTickets } from '@/hooks/useTickets';
+import { useUsers } from '@/hooks/useUsers';
+import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { CreateTicketForm } from '@/components/forms/CreateTicketForm';
+import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const getPriorityColor = (priority: string) => {
   switch (priority) {
-    case 'Alta': return 'destructive';
-    case 'Media': return 'default';
-    case 'Baja': return 'secondary';
+    case 'alta': return 'destructive';
+    case 'media': return 'default';
+    case 'baja': return 'secondary';
     default: return 'default';
   }
 };
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'Abierto': return 'destructive';
-    case 'En Progreso': return 'default';
-    case 'Pendiente': return 'secondary';
-    case 'Resuelto': return 'outline';
+    case 'abierto': return 'destructive';
+    case 'en_progreso': return 'default';
+    case 'pendiente': return 'secondary';
+    case 'resuelto': return 'outline';
+    case 'cerrado': return 'outline';
     default: return 'default';
   }
 };
 
 export function Dashboard() {
+  const navigate = useNavigate();
+  const [showCreateTicket, setShowCreateTicket] = useState(false);
+  const { data: tickets = [] } = useTickets();
+  const { data: users = [] } = useUsers();
+
+  // Calculate stats from real data
+  const activeTickets = tickets.filter(t => ['abierto', 'en_progreso', 'pendiente'].includes(t.status));
+  const resolvedTickets = tickets.filter(t => t.status === 'resuelto');
+  const totalTickets = tickets.length;
+  const recentTickets = tickets.slice(0, 4);
+
+  // Calculate monthly ticket data
+  const currentMonth = new Date().getMonth();
+  const monthlyTickets = tickets.filter(ticket => {
+    const ticketMonth = new Date(ticket.created_at).getMonth();
+    return ticketMonth === currentMonth;
+  });
+
+  // Generate chart data (simplified for demo)
+  const ticketData = [
+    { name: 'Ene', total: 45, resueltos: 38 },
+    { name: 'Feb', total: 52, resueltos: 41 },
+    { name: 'Mar', total: 48, resueltos: 44 },
+    { name: 'Abr', total: 61, resueltos: 52 },
+    { name: 'May', total: 55, resueltos: 49 },
+    { name: 'Jun', total: monthlyTickets.length, resueltos: monthlyTickets.filter(t => t.status === 'resuelto').length },
+  ];
+
+  const responseTimeData = [
+    { name: 'Lun', tiempo: 2.5 },
+    { name: 'Mar', tiempo: 1.8 },
+    { name: 'Mié', tiempo: 3.2 },
+    { name: 'Jue', tiempo: 2.1 },
+    { name: 'Vie', tiempo: 1.9 },
+    { name: 'Sáb', tiempo: 4.1 },
+    { name: 'Dom', tiempo: 3.8 },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -71,7 +91,7 @@ export function Dashboard() {
             Resumen general del sistema de soporte técnico
           </p>
         </div>
-        <Button>
+        <Button onClick={() => setShowCreateTicket(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Nuevo Ticket
         </Button>
@@ -81,22 +101,22 @@ export function Dashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
           title="Tickets Activos"
-          value="23"
-          description="12 nuevos hoy"
+          value={activeTickets.length.toString()}
+          description={`${tickets.filter(t => new Date(t.created_at).toDateString() === new Date().toDateString()).length} nuevos hoy`}
           icon={Ticket}
           trend={{ value: 8, isPositive: true }}
         />
         <StatsCard
-          title="Tiempo Promedio"
-          value="2.3h"
-          description="Tiempo de respuesta"
-          icon={Clock}
-          trend={{ value: 15, isPositive: false }}
+          title="Total Usuarios"
+          value={users.length.toString()}
+          description="Usuarios registrados"
+          icon={Users}
+          trend={{ value: 15, isPositive: true }}
         />
         <StatsCard
           title="Tickets Resueltos"
-          value="156"
-          description="Este mes"
+          value={resolvedTickets.length.toString()}
+          description="Total resueltos"
           icon={CheckCircle}
           trend={{ value: 12, isPositive: true }}
         />
@@ -177,33 +197,51 @@ export function Dashboard() {
                 <div className="flex items-center space-x-4">
                   <div className="flex flex-col">
                     <div className="flex items-center space-x-2">
-                      <span className="font-medium">#{ticket.id}</span>
+                      <span className="font-medium">#{ticket.ticket_number}</span>
                       <Badge variant={getPriorityColor(ticket.priority)}>
-                        {ticket.priority}
+                        {ticket.priority.toUpperCase()}
                       </Badge>
                       <Badge variant={getStatusColor(ticket.status)}>
-                        {ticket.status}
+                        {ticket.status.replace('_', ' ').toUpperCase()}
                       </Badge>
                     </div>
                     <h4 className="font-medium mt-1">{ticket.title}</h4>
                     <p className="text-sm text-muted-foreground">
-                      Cliente: {ticket.customer}
+                      Cliente: {ticket.profiles_customer?.full_name}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-muted-foreground">
-                    hace {ticket.time}
+                    {formatDistanceToNow(new Date(ticket.created_at), { 
+                      addSuffix: true, 
+                      locale: es 
+                    })}
                   </span>
-                  <Button variant="ghost" size="sm">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => navigate(`/tickets/${ticket.id}`)}
+                  >
                     <Eye className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
             ))}
           </div>
+
+          {tickets.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No hay tickets disponibles</p>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      <CreateTicketForm 
+        open={showCreateTicket} 
+        onOpenChange={setShowCreateTicket} 
+      />
     </div>
   );
 }

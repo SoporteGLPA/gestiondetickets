@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Calendar, User, Tag, AlertCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { TicketChat } from './TicketChat';
 
 export function TicketDetail() {
   const { id } = useParams();
@@ -114,6 +115,19 @@ export function TicketDetail() {
               </CardContent>
             </Card>
           )}
+
+          {/* Chat Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Conversación</CardTitle>
+              <CardDescription>
+                Chat con el cliente y equipo de soporte
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TicketChat ticketId={ticket.id} />
+            </CardContent>
+          </Card>
         </div>
 
         <div className="space-y-6">

@@ -6,13 +6,58 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Plus, Mail, Shield, User, Phone, Building } from 'lucide-react';
+import { Plus, Mail, Shield, User, Building, Trash } from 'lucide-react';
 import { CreateUserForm } from '@/components/forms/CreateUserForm';
+import { EditUserForm } from '@/components/forms/EditUserForm';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { User as UserType } from '@/hooks/useUsers';
 
 const Users = () => {
   const { hasRole } = useAuth();
   const { data: users, isLoading } = useUsers();
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast({
+        title: "Usuario eliminado",
+        description: "El usuario ha sido eliminado exitosamente",
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo eliminar el usuario",
+      });
+    },
+  });
+
+  const handleEdit = (user: UserType) => {
+    setSelectedUser(user);
+    setShowEditForm(true);
+  };
+
+  const handleDelete = async (user: UserType) => {
+    if (confirm(`¿Estás seguro de que deseas eliminar al usuario ${user.full_name}?`)) {
+      await deleteUserMutation.mutateAsync(user.id);
+    }
+  };
 
   const getRoleColor = (role: string) => {
     switch (role) {
@@ -74,12 +119,6 @@ const Users = () => {
                       <Mail className="h-3 w-3" />
                       <span>{user.email}</span>
                     </div>
-                    {user.phone && (
-                      <div className="flex items-center space-x-1">
-                        <Phone className="h-3 w-3" />
-                        <span>{user.phone}</span>
-                      </div>
-                    )}
                     {user.department && (
                       <div className="flex items-center space-x-1">
                         <Building className="h-3 w-3" />
@@ -98,9 +137,23 @@ const Users = () => {
                   {user.is_active ? 'Activo' : 'Inactivo'}
                 </Badge>
                 {hasRole(['admin']) && (
-                  <Button variant="outline" size="sm">
-                    Editar
-                  </Button>
+                  <div className="flex space-x-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleEdit(user)}
+                    >
+                      Editar
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleDelete(user)}
+                      disabled={deleteUserMutation.isPending}
+                    >
+                      <Trash className="h-4 w-4" />
+                    </Button>
+                  </div>
                 )}
               </div>
             </CardContent>
@@ -126,6 +179,12 @@ const Users = () => {
       <CreateUserForm 
         open={showCreateForm} 
         onOpenChange={setShowCreateForm} 
+      />
+
+      <EditUserForm 
+        open={showEditForm} 
+        onOpenChange={setShowEditForm}
+        user={selectedUser}
       />
     </div>
   );

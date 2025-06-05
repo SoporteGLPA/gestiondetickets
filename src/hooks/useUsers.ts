@@ -12,7 +12,6 @@ export interface User {
   email: string;
   role: UserRole;
   department?: string;
-  phone?: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -51,29 +50,44 @@ export function useCreateUser() {
     mutationFn: async (userData: {
       full_name: string;
       email: string;
+      password: string;
       role: UserRole;
       department?: string;
-      phone?: string;
       is_active: boolean;
     }) => {
-      // Para este ejemplo, crearemos el perfil directamente
-      // En producción, deberías usar el endpoint de admin de Supabase
-      const { data, error } = await supabase.auth.signUp({
+      // Create user with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: userData.email,
-        password: 'TempPassword123!', // Contraseña temporal
+        password: userData.password,
         options: {
           data: {
             full_name: userData.full_name,
             role: userData.role,
             department: userData.department,
-            phone: userData.phone,
             is_active: userData.is_active,
           }
         }
       });
 
-      if (error) throw error;
-      return data;
+      if (authError) throw authError;
+
+      // If user was created successfully, update the profile with the correct role
+      if (authData.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            role: userData.role,
+            department: userData.department,
+            is_active: userData.is_active,
+          })
+          .eq('id', authData.user.id);
+
+        if (profileError) {
+          console.error('Error updating profile:', profileError);
+        }
+      }
+
+      return authData;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
