@@ -97,6 +97,7 @@ export function useCreateUser() {
       });
     },
     onError: (error) => {
+      console.error('Error creating user:', error);
       toast({
         variant: "destructive",
         title: "Error",

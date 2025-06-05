@@ -101,6 +101,35 @@ export type Database = {
           },
         ]
       }
+      notification_views: {
+        Row: {
+          id: string
+          ticket_id: string
+          user_id: string
+          viewed_at: string
+        }
+        Insert: {
+          id?: string
+          ticket_id: string
+          user_id: string
+          viewed_at?: string
+        }
+        Update: {
+          id?: string
+          ticket_id?: string
+          user_id?: string
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_views_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null

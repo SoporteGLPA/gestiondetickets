@@ -5,10 +5,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Calendar, User, Tag, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Calendar, User, Tag } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { TicketChat } from './TicketChat';
+import { TicketStatusDropdown } from './TicketStatusDropdown';
 
 export function TicketDetail() {
   const { id } = useParams();
@@ -66,20 +67,9 @@ export function TicketDetail() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'abierto': return 'destructive';
-      case 'en_progreso': return 'default';
-      case 'pendiente': return 'secondary';
-      case 'resuelto': return 'default';
-      case 'cerrado': return 'outline';
-      default: return 'default';
-    }
-  };
-
   return (
     <div className="container mx-auto px-4 py-6 space-y-6">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <Button 
           variant="outline" 
           size="sm" 
@@ -88,8 +78,8 @@ export function TicketDetail() {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Volver
         </Button>
-        <div>
-          <h1 className="text-3xl font-bold">Ticket #{ticket.ticket_number}</h1>
+        <div className="flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold">Ticket #{ticket.ticket_number}</h1>
           <p className="text-muted-foreground">{ticket.title}</p>
         </div>
       </div>
@@ -136,15 +126,15 @@ export function TicketDetail() {
               <CardTitle>Información del Ticket</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-4 w-4" />
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                 <span className="font-medium">Estado:</span>
-                <Badge variant={getStatusColor(ticket.status)}>
-                  {ticket.status.replace('_', ' ').toUpperCase()}
-                </Badge>
+                <TicketStatusDropdown 
+                  ticketId={ticket.id} 
+                  currentStatus={ticket.status} 
+                />
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                 <Tag className="h-4 w-4" />
                 <span className="font-medium">Prioridad:</span>
                 <Badge variant={getPriorityColor(ticket.priority)}>
@@ -153,7 +143,7 @@ export function TicketDetail() {
               </div>
 
               {ticket.ticket_categories && (
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                   <Tag className="h-4 w-4" />
                   <span className="font-medium">Categoría:</span>
                   <Badge variant="outline" style={{ backgroundColor: ticket.ticket_categories.color + '20' }}>
@@ -162,7 +152,7 @@ export function TicketDetail() {
                 </div>
               )}
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                 <Calendar className="h-4 w-4" />
                 <span className="font-medium">Creado:</span>
                 <span className="text-sm text-muted-foreground">
@@ -187,7 +177,7 @@ export function TicketDetail() {
                 </div>
                 <div className="ml-6">
                   <p className="font-medium">{ticket.profiles_customer?.full_name}</p>
-                  <p className="text-sm text-muted-foreground">{ticket.profiles_customer?.email}</p>
+                  <p className="text-sm text-muted-foreground break-all">{ticket.profiles_customer?.email}</p>
                 </div>
               </div>
 
@@ -199,7 +189,7 @@ export function TicketDetail() {
                   </div>
                   <div className="ml-6">
                     <p className="font-medium">{ticket.profiles_assignee.full_name}</p>
-                    <p className="text-sm text-muted-foreground">{ticket.profiles_assignee.email}</p>
+                    <p className="text-sm text-muted-foreground break-all">{ticket.profiles_assignee.email}</p>
                   </div>
                 </div>
               )}

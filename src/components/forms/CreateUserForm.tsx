@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
+import { PasswordInput } from '@/components/ui/password-input';
 import { useCreateUser } from '@/hooks/useUsers';
 
 const userSchema = z.object({
@@ -42,7 +43,6 @@ export function CreateUserForm({ open, onOpenChange }: CreateUserFormProps) {
   });
 
   const onSubmit = async (data: UserFormData) => {
-    // Ensure all required fields are present
     const userData = {
       full_name: data.full_name,
       email: data.email,
@@ -59,7 +59,7 @@ export function CreateUserForm({ open, onOpenChange }: CreateUserFormProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Crear Nuevo Usuario</DialogTitle>
         </DialogHeader>
@@ -100,7 +100,7 @@ export function CreateUserForm({ open, onOpenChange }: CreateUserFormProps) {
                 <FormItem>
                   <FormLabel>Contraseña</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="Mínimo 6 caracteres" {...field} />
+                    <PasswordInput placeholder="Mínimo 6 caracteres" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -165,7 +165,7 @@ export function CreateUserForm({ open, onOpenChange }: CreateUserFormProps) {
               )}
             />
 
-            <div className="flex justify-end space-x-2">
+            <div className="flex justify-end space-x-2 pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>

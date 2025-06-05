@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
+import { PasswordInput } from '@/components/ui/password-input';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -16,6 +17,7 @@ import { User } from '@/hooks/useUsers';
 const userSchema = z.object({
   full_name: z.string().min(1, 'El nombre es requerido'),
   email: z.string().email('Email inválido'),
+  password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres').optional().or(z.literal('')),
   role: z.enum(['admin', 'agent', 'user']),
   department: z.string().optional(),
   is_active: z.boolean(),
@@ -38,6 +40,7 @@ export function EditUserForm({ open, onOpenChange, user }: EditUserFormProps) {
     defaultValues: {
       full_name: user?.full_name || '',
       email: user?.email || '',
+      password: '',
       role: user?.role || 'user',
       department: user?.department || '',
       is_active: user?.is_active ?? true,
@@ -49,6 +52,7 @@ export function EditUserForm({ open, onOpenChange, user }: EditUserFormProps) {
     form.reset({
       full_name: user.full_name,
       email: user.email,
+      password: '',
       role: user.role,
       department: user.department || '',
       is_active: user.is_active,
@@ -59,7 +63,8 @@ export function EditUserForm({ open, onOpenChange, user }: EditUserFormProps) {
     mutationFn: async (userData: UserFormData) => {
       if (!user) throw new Error('No user selected');
 
-      const { data, error } = await supabase
+      // Update profile
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({
           full_name: userData.full_name,
@@ -68,12 +73,20 @@ export function EditUserForm({ open, onOpenChange, user }: EditUserFormProps) {
           department: userData.department,
           is_active: userData.is_active,
         })
-        .eq('id', user.id)
-        .select()
-        .single();
+        .eq('id', user.id);
 
-      if (error) throw error;
-      return data;
+      if (profileError) throw profileError;
+
+      // Update password if provided
+      if (userData.password && userData.password.trim()) {
+        const { error: passwordError } = await supabase.auth.admin.updateUserById(
+          user.id,
+          { password: userData.password }
+        );
+        if (passwordError) throw passwordError;
+      }
+
+      return true;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
@@ -85,6 +98,7 @@ export function EditUserForm({ open, onOpenChange, user }: EditUserFormProps) {
       onOpenChange(false);
     },
     onError: (error) => {
+      console.error('Error updating user:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -99,7 +113,7 @@ export function EditUserForm({ open, onOpenChange, user }: EditUserFormProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar Usuario</DialogTitle>
         </DialogHeader>
@@ -127,6 +141,20 @@ export function EditUserForm({ open, onOpenChange, user }: EditUserFormProps) {
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input type="email" placeholder="usuario@empresa.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nueva Contraseña (opcional)</FormLabel>
+                  <FormControl>
+                    <PasswordInput placeholder="Dejar vacío para mantener la actual" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -191,7 +219,7 @@ export function EditUserForm({ open, onOpenChange, user }: EditUserFormProps) {
               )}
             />
 
-            <div className="flex justify-end space-x-2">
+            <div className="flex justify-end space-x-2 pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>

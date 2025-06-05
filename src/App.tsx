@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,6 +8,7 @@ import { AuthProvider } from "./hooks/useAuth";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { AuthPage } from "./components/auth/AuthPage";
 import { MainLayout } from "./components/layout/MainLayout";
+import { ArticleReader } from "./components/knowledge/ArticleReader";
 import Index from "./pages/Index";
 import Tickets from "./pages/Tickets";
 import Knowledge from "./pages/Knowledge";
@@ -39,6 +41,11 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="knowledge" element={<Knowledge />} />
+              <Route path="knowledge/:id" element={
+                <ProtectedRoute>
+                  <ArticleReader />
+                </ProtectedRoute>
+              } />
               <Route path="users" element={
                 <ProtectedRoute requiredRoles={['admin', 'agent']}>
                   <Users />
