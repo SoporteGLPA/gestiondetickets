@@ -20,9 +20,15 @@ export function TicketChat({ ticketId }: TicketChatProps) {
   const [message, setMessage] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Scroll to bottom when new messages arrive
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   // Fetch comments with real-time updates
   const { data: comments = [] } = useQuery({
@@ -46,7 +52,7 @@ export function TicketChat({ ticketId }: TicketChatProps) {
   // Set up real-time subscription
   useEffect(() => {
     const channel = supabase
-      .channel('ticket-comments-changes')
+      .channel(`ticket-comments-${ticketId}`)
       .on(
         'postgres_changes',
         {
@@ -55,16 +61,24 @@ export function TicketChat({ ticketId }: TicketChatProps) {
           table: 'ticket_comments',
           filter: `ticket_id=eq.${ticketId}`
         },
-        () => {
+        (payload) => {
+          console.log('Real-time update received:', payload);
           queryClient.invalidateQueries({ queryKey: ['ticket-comments', ticketId] });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Subscription status:', status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, [ticketId, queryClient]);
+
+  // Scroll to bottom when comments change
+  useEffect(() => {
+    scrollToBottom();
+  }, [comments]);
 
   // Add comment mutation
   const addCommentMutation = useMutation({
@@ -95,23 +109,28 @@ export function TicketChat({ ticketId }: TicketChatProps) {
           continue;
         }
 
-        // Save attachment metadata to database
-        const { error: attachmentError } = await supabase
-          .from('ticket_comment_attachments')
-          .insert({
-            comment_id: comment.id,
-            file_name: file.name,
-            file_path: `ticket-comments/${comment.id}/${file.name}`,
-            file_size: file.size,
-            mime_type: file.type,
-          });
+        // Convert file to base64 for simple storage simulation
+        const reader = new FileReader();
+        reader.onload = async () => {
+          const { error: attachmentError } = await supabase
+            .from('ticket_comment_attachments')
+            .insert({
+              comment_id: comment.id,
+              file_name: file.name,
+              file_path: `data:${file.type};base64,${reader.result?.toString().split(',')[1]}`,
+              file_size: file.size,
+              mime_type: file.type,
+            });
 
-        if (attachmentError) {
-          console.error('Error saving attachment:', attachmentError);
-        }
+          if (attachmentError) {
+            console.error('Error saving attachment:', attachmentError);
+          } else {
+            queryClient.invalidateQueries({ queryKey: ['ticket-comments', ticketId] });
+          }
+        };
+        reader.readAsDataURL(file);
       }
 
-      queryClient.invalidateQueries({ queryKey: ['ticket-comments', ticketId] });
       setMessage('');
       setAttachments([]);
     },
@@ -145,11 +164,26 @@ export function TicketChat({ ticketId }: TicketChatProps) {
   };
 
   const downloadAttachment = (attachment: any) => {
-    // In a real implementation, you would get the file from storage
-    toast({
-      title: "Descarga",
-      description: `Descargando ${attachment.file_name}...`,
-    });
+    try {
+      // Create download link from base64 data
+      const link = document.createElement('a');
+      link.href = attachment.file_path;
+      link.download = attachment.file_name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        title: "Descarga iniciada",
+        description: `Descargando ${attachment.file_name}...`,
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo descargar el archivo",
+      });
+    }
   };
 
   return (
@@ -221,6 +255,7 @@ export function TicketChat({ ticketId }: TicketChatProps) {
             </div>
           </div>
         ))}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Attachments preview */}

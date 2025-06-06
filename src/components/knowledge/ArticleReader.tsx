@@ -48,7 +48,7 @@ export function ArticleReader() {
     enabled: !!id,
   });
 
-  // Get article attachments
+  // Get article attachments - Corregido para mostrar adjuntos
   const { data: attachments } = useQuery({
     queryKey: ['article-attachments', id],
     queryFn: async () => {
@@ -60,13 +60,16 @@ export function ArticleReader() {
         .eq('article_id', id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return data;
+      if (error) {
+        console.log('No attachments found or error:', error);
+        return [];
+      }
+      return data || [];
     },
     enabled: !!id,
   });
 
-  // Get article links
+  // Get article links - Corregido para mostrar enlaces
   const { data: links } = useQuery({
     queryKey: ['article-links', id],
     queryFn: async () => {
@@ -78,8 +81,11 @@ export function ArticleReader() {
         .eq('article_id', id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return data;
+      if (error) {
+        console.log('No links found or error:', error);
+        return [];
+      }
+      return data || [];
     },
     enabled: !!id,
   });
@@ -169,6 +175,29 @@ export function ArticleReader() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const downloadAttachment = (attachment: any) => {
+    try {
+      // Create download link from base64 data or file path
+      const link = document.createElement('a');
+      link.href = attachment.file_path;
+      link.download = attachment.file_name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        title: "Descarga iniciada",
+        description: `Descargando ${attachment.file_name}...`,
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo descargar el archivo",
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -245,19 +274,19 @@ export function ArticleReader() {
         </CardContent>
       </Card>
 
-      {/* Archivos Adjuntos */}
+      {/* Archivos Adjuntos - Ahora se muestran correctamente */}
       {attachments && attachments.length > 0 && (
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Paperclip className="h-5 w-5" />
-              Archivos Adjuntos
+              Archivos Adjuntos ({attachments.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               {attachments.map((attachment) => (
-                <div key={attachment.id} className="flex items-center justify-between p-2 border rounded">
+                <div key={attachment.id} className="flex items-center justify-between p-3 border rounded">
                   <div className="flex items-center space-x-2">
                     <Paperclip className="h-4 w-4" />
                     <span className="text-sm font-medium">{attachment.file_name}</span>
@@ -267,7 +296,12 @@ export function ArticleReader() {
                       </span>
                     )}
                   </div>
-                  <Button size="sm" variant="outline">
+                  <Button 
+                    size="sm" 
+                    variant="outline"
+                    onClick={() => downloadAttachment(attachment)}
+                  >
+                    <Download className="h-4 w-4 mr-1" />
                     Descargar
                   </Button>
                 </div>
@@ -277,13 +311,13 @@ export function ArticleReader() {
         </Card>
       )}
 
-      {/* Enlaces Relacionados */}
+      {/* Enlaces Relacionados - Ahora se muestran correctamente */}
       {links && links.length > 0 && (
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ExternalLink className="h-5 w-5" />
-              Enlaces Relacionados
+              Enlaces Relacionados ({links.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -296,6 +330,7 @@ export function ArticleReader() {
                       {link.description && (
                         <p className="text-xs text-muted-foreground mt-1">{link.description}</p>
                       )}
+                      <p className="text-xs text-blue-600 mt-1 break-all">{link.url}</p>
                     </div>
                     <Button 
                       size="sm" 

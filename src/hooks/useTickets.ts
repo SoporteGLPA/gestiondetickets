@@ -49,6 +49,7 @@ export function useTickets() {
           profiles_assignee:profiles!assignee_id(full_name, email),
           ticket_categories(name, color)
         `)
+        .neq('status', 'cerrado') // Filtrar tickets cerrados (fusionados)
         .order('created_at', { ascending: false });
 
       if (error) {

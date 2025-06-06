@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 export function useSidebarState() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -25,10 +26,27 @@ export function useSidebarState() {
     }
   };
 
+  const handleMouseEnter = () => {
+    if (!isMobile) {
+      setIsHovered(true);
+      setIsExpanded(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (!isMobile) {
+      setIsHovered(false);
+      setIsExpanded(false);
+    }
+  };
+
   return {
     isExpanded,
     isMobile,
+    isHovered,
     toggleSidebar,
-    setIsExpanded
+    setIsExpanded,
+    handleMouseEnter,
+    handleMouseLeave
   };
 }

@@ -12,7 +12,6 @@ import {
   BookOpen, 
   Users, 
   Settings, 
-  HelpCircle,
   BarChart3,
   Menu,
   X
@@ -25,7 +24,6 @@ const navigation = [
   { name: 'Usuarios', href: '/users', icon: Users, roles: ['admin', 'agent'] },
   { name: 'Reportes', href: '/reports', icon: BarChart3, roles: ['admin', 'agent'] },
   { name: 'Configuración', href: '/settings', icon: Settings, roles: ['admin', 'agent'] },
-  { name: 'Ayuda', href: '/help', icon: HelpCircle, roles: ['admin', 'agent', 'user'] },
 ];
 
 interface SidebarProps {
@@ -34,7 +32,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ className, onToggle }: SidebarProps) {
-  const { isExpanded, isMobile, toggleSidebar } = useSidebarState();
+  const { isExpanded, isMobile, handleMouseEnter, handleMouseLeave, toggleSidebar } = useSidebarState();
   const location = useLocation();
   const { profile } = useAuth();
 
@@ -76,7 +74,7 @@ export function Sidebar({ className, onToggle }: SidebarProps) {
     );
   }
 
-  // Sidebar desktop
+  // Sidebar desktop con hover
   return (
     <>
       {/* Overlay for mobile when expanded */}
@@ -93,6 +91,8 @@ export function Sidebar({ className, onToggle }: SidebarProps) {
           isExpanded ? "w-64" : "w-16",
           className
         )}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
@@ -100,9 +100,9 @@ export function Sidebar({ className, onToggle }: SidebarProps) {
             <>
               <div className="flex items-center gap-2">
                 <img 
-                  src="/placeholder.svg" 
+                  src="/logo.jpg" 
                   alt="SoporteTech Logo" 
-                  className="w-8 h-8 rounded-lg"
+                  className="w-8 h-8 rounded-lg object-cover"
                 />
                 <h1 className="text-xl font-bold text-sidebar-primary">SoporteTech</h1>
               </div>
@@ -116,14 +116,13 @@ export function Sidebar({ className, onToggle }: SidebarProps) {
               </Button>
             </>
           ) : (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={toggleSidebar}
-              className="p-1 h-8 w-8 mx-auto"
-            >
-              <Menu className="h-4 w-4" />
-            </Button>
+            <div className="flex justify-center w-full">
+              <img 
+                src="/logo.jpg" 
+                alt="SoporteTech Logo" 
+                className="w-8 h-8 rounded-lg object-cover"
+              />
+            </div>
           )}
         </div>
 
