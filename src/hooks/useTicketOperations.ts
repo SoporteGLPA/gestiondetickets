@@ -53,6 +53,24 @@ export function useTicketOperations() {
     }) => {
       if (!user) throw new Error('User not authenticated');
 
+      // Obtener información del ticket origen
+      const { data: sourceTicket, error: sourceError } = await supabase
+        .from('tickets')
+        .select('*')
+        .eq('id', sourceTicketId)
+        .single();
+
+      if (sourceError) throw sourceError;
+
+      // Obtener información del ticket destino
+      const { data: targetTicket, error: targetError } = await supabase
+        .from('tickets')
+        .select('*')
+        .eq('id', targetTicketId)
+        .single();
+
+      if (targetError) throw targetError;
+
       // Registrar la operación
       const { error: operationError } = await supabase
         .from('ticket_operations')
@@ -74,12 +92,56 @@ export function useTicketOperations() {
 
       if (commentsError) throw commentsError;
 
+      // Transferir adjuntos del ticket origen al destino
+      const { error: attachmentsError } = await supabase
+        .from('ticket_attachments')
+        .update({ ticket_id: targetTicketId })
+        .eq('ticket_id', sourceTicketId);
+
+      if (attachmentsError) throw attachmentsError;
+
+      // Actualizar el ticket destino con información del fusionado
+      const mergedInfo = {
+        originalTickets: [
+          {
+            id: sourceTicket.id,
+            ticket_number: sourceTicket.ticket_number,
+            title: sourceTicket.title,
+            description: sourceTicket.description,
+            priority: sourceTicket.priority,
+            created_at: sourceTicket.created_at
+          },
+          {
+            id: targetTicket.id,
+            ticket_number: targetTicket.ticket_number,
+            title: targetTicket.title,
+            description: targetTicket.description,
+            priority: targetTicket.priority,
+            created_at: targetTicket.created_at
+          }
+        ],
+        mergedAt: new Date().toISOString(),
+        mergedBy: user.id,
+        notes: notes || 'Tickets fusionados'
+      };
+
+      const { error: updateTargetError } = await supabase
+        .from('tickets')
+        .update({ 
+          merged_ticket_info: mergedInfo,
+          title: `${targetTicket.title} (Fusionado con #${sourceTicket.ticket_number})`,
+          description: `${targetTicket.description}\n\n--- TICKET FUSIONADO ---\nTicket original #${sourceTicket.ticket_number}: ${sourceTicket.title}\n${sourceTicket.description}`
+        })
+        .eq('id', targetTicketId);
+
+      if (updateTargetError) throw updateTargetError;
+
       // Cerrar el ticket origen
       const { error: closeError } = await supabase
         .from('tickets')
         .update({ 
           status: 'cerrado',
-          resolution_notes: `Ticket fusionado con #${targetTicketId}${notes ? `. Notas: ${notes}` : ''}`,
+          resolution_notes: `Ticket fusionado con #${targetTicket.ticket_number}${notes ? `. Notas: ${notes}` : ''}`,
           resolved_at: new Date().toISOString()
         })
         .eq('id', sourceTicketId);

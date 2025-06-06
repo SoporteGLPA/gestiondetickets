@@ -320,6 +320,44 @@ export type Database = {
         }
         Relationships: []
       }
+      ticket_comment_attachments: {
+        Row: {
+          comment_id: string
+          created_at: string
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          mime_type: string | null
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_comment_attachments_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ticket_comments: {
         Row: {
           content: string
@@ -418,6 +456,7 @@ export type Database = {
           customer_id: string
           description: string
           id: string
+          merged_ticket_info: Json | null
           priority: Database["public"]["Enums"]["ticket_priority"]
           resolution_notes: string | null
           resolved_at: string | null
@@ -433,6 +472,7 @@ export type Database = {
           customer_id: string
           description: string
           id?: string
+          merged_ticket_info?: Json | null
           priority?: Database["public"]["Enums"]["ticket_priority"]
           resolution_notes?: string | null
           resolved_at?: string | null
@@ -448,6 +488,7 @@ export type Database = {
           customer_id?: string
           description?: string
           id?: string
+          merged_ticket_info?: Json | null
           priority?: Database["public"]["Enums"]["ticket_priority"]
           resolution_notes?: string | null
           resolved_at?: string | null

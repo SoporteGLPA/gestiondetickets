@@ -1,12 +1,12 @@
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Send, Paperclip, File } from 'lucide-react';
+import { Send, Paperclip, File, Download } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
@@ -24,7 +24,7 @@ export function TicketChat({ ticketId }: TicketChatProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch comments
+  // Fetch comments with real-time updates
   const { data: comments = [] } = useQuery({
     queryKey: ['ticket-comments', ticketId],
     queryFn: async () => {
@@ -32,7 +32,8 @@ export function TicketChat({ ticketId }: TicketChatProps) {
         .from('ticket_comments')
         .select(`
           *,
-          profiles(full_name, role)
+          profiles(full_name, role),
+          ticket_comment_attachments(*)
         `)
         .eq('ticket_id', ticketId)
         .order('created_at', { ascending: true });
@@ -41,6 +42,29 @@ export function TicketChat({ ticketId }: TicketChatProps) {
       return data;
     },
   });
+
+  // Set up real-time subscription
+  useEffect(() => {
+    const channel = supabase
+      .channel('ticket-comments-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ticket_comments',
+          filter: `ticket_id=eq.${ticketId}`
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['ticket-comments', ticketId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [ticketId, queryClient]);
 
   // Add comment mutation
   const addCommentMutation = useMutation({
@@ -59,43 +83,37 @@ export function TicketChat({ ticketId }: TicketChatProps) {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async (comment) => {
+      // Upload attachments if any
+      for (const file of attachments) {
+        if (file.size > 4 * 1024 * 1024) { // 4MB limit
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: `El archivo ${file.name} excede el límite de 4MB`,
+          });
+          continue;
+        }
+
+        // Save attachment metadata to database
+        const { error: attachmentError } = await supabase
+          .from('ticket_comment_attachments')
+          .insert({
+            comment_id: comment.id,
+            file_name: file.name,
+            file_path: `ticket-comments/${comment.id}/${file.name}`,
+            file_size: file.size,
+            mime_type: file.type,
+          });
+
+        if (attachmentError) {
+          console.error('Error saving attachment:', attachmentError);
+        }
+      }
+
       queryClient.invalidateQueries({ queryKey: ['ticket-comments', ticketId] });
       setMessage('');
       setAttachments([]);
-    },
-  });
-
-  // Upload attachment mutation
-  const uploadAttachmentMutation = useMutation({
-    mutationFn: async (file: File) => {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `ticket-attachments/${ticketId}/${fileName}`;
-
-      // Upload to storage (if implemented)
-      // For now, just save metadata
-      const { data, error } = await supabase
-        .from('ticket_attachments')
-        .insert({
-          ticket_id: ticketId,
-          uploaded_by: user!.id,
-          file_name: file.name,
-          file_path: filePath,
-          file_size: file.size,
-          mime_type: file.type,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      toast({
-        title: "Archivo adjuntado",
-        description: "El archivo se ha subido correctamente",
-      });
     },
   });
 
@@ -104,26 +122,10 @@ export function TicketChat({ ticketId }: TicketChatProps) {
     if (!message.trim() && attachments.length === 0) return;
 
     try {
-      // Upload attachments first
-      for (const file of attachments) {
-        if (file.size > 4 * 1024 * 1024) { // 4MB limit
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: `El archivo ${file.name} excede el límite de 4MB`,
-          });
-          return;
-        }
-        await uploadAttachmentMutation.mutateAsync(file);
-      }
-
-      // Add comment if there's message
-      if (message.trim()) {
-        await addCommentMutation.mutateAsync({
-          content: message,
-          is_internal: false,
-        });
-      }
+      await addCommentMutation.mutateAsync({
+        content: message || 'Archivo adjunto',
+        is_internal: false,
+      });
     } catch (error) {
       toast({
         variant: "destructive",
@@ -140,6 +142,14 @@ export function TicketChat({ ticketId }: TicketChatProps) {
 
   const removeAttachment = (index: number) => {
     setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const downloadAttachment = (attachment: any) => {
+    // In a real implementation, you would get the file from storage
+    toast({
+      title: "Descarga",
+      description: `Descargando ${attachment.file_name}...`,
+    });
   };
 
   return (
@@ -180,6 +190,27 @@ export function TicketChat({ ticketId }: TicketChatProps) {
                   )}
                 </div>
                 <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
+                
+                {/* Show attachments */}
+                {comment.ticket_comment_attachments && comment.ticket_comment_attachments.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {comment.ticket_comment_attachments.map((attachment: any) => (
+                      <div key={attachment.id} className="flex items-center gap-2 p-2 bg-background/50 rounded">
+                        <File className="h-4 w-4" />
+                        <span className="text-xs truncate flex-1">{attachment.file_name}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => downloadAttachment(attachment)}
+                          className="h-6 w-6 p-1"
+                        >
+                          <Download className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
                 <p className="text-xs opacity-70 mt-1">
                   {formatDistanceToNow(new Date(comment.created_at), { 
                     addSuffix: true, 
