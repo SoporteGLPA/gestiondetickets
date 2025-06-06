@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Star, Eye, ThumbsUp, ThumbsDown, Paperclip, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Star, Eye, ThumbsUp, ThumbsDown, Paperclip, ExternalLink, Download } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useState } from 'react';
