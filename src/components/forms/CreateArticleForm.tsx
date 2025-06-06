@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useCreateArticle } from '@/hooks/useKnowledge';
+import { useCreateArticle, CreateArticleInput } from '@/hooks/useKnowledge';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import {
@@ -123,10 +123,17 @@ export function CreateArticleForm({ open, onOpenChange }: CreateArticleFormProps
     if (!user) return;
 
     try {
-      await createArticleMutation.mutateAsync({
-        ...values,
+      // Asegurándonos de que todos los campos requeridos estén presentes y con los tipos correctos
+      const articleData: CreateArticleInput = {
+        title: values.title,
+        content: values.content,
+        summary: values.summary,
+        category: values.category,
+        is_published: values.is_published,
         author_id: user.id,
-      });
+      };
+      
+      await createArticleMutation.mutateAsync(articleData);
       
       form.reset();
       setAttachments([]);

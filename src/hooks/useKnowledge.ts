@@ -25,6 +25,31 @@ export interface Article {
   };
 }
 
+export interface ArticleWithAttachments extends Article {
+  attachments?: Array<{
+    id: string;
+    file_name: string;
+    file_path: string;
+    file_size?: number;
+    mime_type?: string;
+  }>;
+  links?: Array<{
+    id: string;
+    title: string;
+    url: string;
+    description?: string;
+  }>;
+}
+
+export interface CreateArticleInput {
+  title: string;
+  summary?: string;
+  content: string;
+  category: ArticleCategory;
+  author_id: string;
+  is_published: boolean;
+}
+
 export function useKnowledgeArticles() {
   const { toast } = useToast();
 
@@ -53,19 +78,65 @@ export function useKnowledgeArticles() {
   });
 }
 
+export function useArticle(id?: string) {
+  const { toast } = useToast();
+  
+  return useQuery({
+    queryKey: ['article', id],
+    enabled: !!id,
+    queryFn: async () => {
+      // Primero, obtenemos el artículo
+      const { data: article, error } = await supabase
+        .from('knowledge_articles')
+        .select(`
+          *,
+          profiles:author_id(full_name, email)
+        `)
+        .eq('id', id!)
+        .single();
+
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "No se pudo cargar el artículo",
+        });
+        throw error;
+      }
+
+      // Luego obtenemos los archivos adjuntos
+      const { data: attachments } = await supabase
+        .from('article_attachments')
+        .select('*')
+        .eq('article_id', id!);
+
+      // Y los enlaces
+      const { data: links } = await supabase
+        .from('article_links')
+        .select('*')
+        .eq('article_id', id!);
+
+      // Incrementamos el contador de vistas
+      await supabase
+        .from('knowledge_articles')
+        .update({ views: (article.views || 0) + 1 })
+        .eq('id', id!);
+
+      return {
+        ...article,
+        attachments: attachments || [],
+        links: links || []
+      } as ArticleWithAttachments;
+    },
+  });
+}
+
 export function useCreateArticle() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: async (articleData: {
-      title: string;
-      summary?: string;
-      content: string;
-      category: ArticleCategory;
-      author_id: string;
-      is_published: boolean;
-    }) => {
+    mutationFn: async (articleData: CreateArticleInput) => {
       const { data, error } = await supabase
         .from('knowledge_articles')
         .insert(articleData)
@@ -87,6 +158,109 @@ export function useCreateArticle() {
         variant: "destructive",
         title: "Error",
         description: "No se pudo crear el artículo",
+      });
+    },
+  });
+}
+
+export function useArticleAttachments() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      articleId, 
+      fileName, 
+      filePath, 
+      fileSize, 
+      mimeType, 
+      userId 
+    }: { 
+      articleId: string; 
+      fileName: string; 
+      filePath: string; 
+      fileSize?: number; 
+      mimeType?: string; 
+      userId: string;
+    }) => {
+      const { data, error } = await supabase
+        .from('article_attachments')
+        .insert({
+          article_id: articleId,
+          file_name: fileName,
+          file_path: filePath,
+          file_size: fileSize,
+          mime_type: mimeType,
+          uploaded_by: userId
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['article', variables.articleId] });
+      toast({
+        title: "Archivo adjuntado",
+        description: "El archivo ha sido adjuntado exitosamente al artículo",
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo adjuntar el archivo",
+      });
+    },
+  });
+}
+
+export function useArticleLinks() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ 
+      articleId, 
+      title,
+      url,
+      description,
+      userId 
+    }: { 
+      articleId: string; 
+      title: string;
+      url: string;
+      description?: string;
+      userId: string;
+    }) => {
+      const { data, error } = await supabase
+        .from('article_links')
+        .insert({
+          article_id: articleId,
+          title,
+          url,
+          description,
+          created_by: userId
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['article', variables.articleId] });
+      toast({
+        title: "Enlace agregado",
+        description: "El enlace ha sido agregado exitosamente al artículo",
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo agregar el enlace",
       });
     },
   });
