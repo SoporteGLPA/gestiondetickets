@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Star, Eye, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { ArrowLeft, Star, Eye, ThumbsUp, ThumbsDown, Paperclip, ExternalLink } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useState } from 'react';
@@ -43,6 +43,42 @@ export function ArticleReader() {
         .update({ views: (data.views || 0) + 1 })
         .eq('id', id);
 
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  // Get article attachments
+  const { data: attachments } = useQuery({
+    queryKey: ['article-attachments', id],
+    queryFn: async () => {
+      if (!id) return [];
+      
+      const { data, error } = await supabase
+        .from('article_attachments')
+        .select('*')
+        .eq('article_id', id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  // Get article links
+  const { data: links } = useQuery({
+    queryKey: ['article-links', id],
+    queryFn: async () => {
+      if (!id) return [];
+      
+      const { data, error } = await supabase
+        .from('article_links')
+        .select('*')
+        .eq('article_id', id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
       return data;
     },
     enabled: !!id,
@@ -125,6 +161,14 @@ export function ArticleReader() {
     return colors[category as keyof typeof colors] || 'bg-gray-100 text-gray-800';
   };
 
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -200,6 +244,74 @@ export function ArticleReader() {
           />
         </CardContent>
       </Card>
+
+      {/* Archivos Adjuntos */}
+      {attachments && attachments.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Paperclip className="h-5 w-5" />
+              Archivos Adjuntos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {attachments.map((attachment) => (
+                <div key={attachment.id} className="flex items-center justify-between p-2 border rounded">
+                  <div className="flex items-center space-x-2">
+                    <Paperclip className="h-4 w-4" />
+                    <span className="text-sm font-medium">{attachment.file_name}</span>
+                    {attachment.file_size && (
+                      <span className="text-xs text-muted-foreground">
+                        ({formatFileSize(attachment.file_size)})
+                      </span>
+                    )}
+                  </div>
+                  <Button size="sm" variant="outline">
+                    Descargar
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Enlaces Relacionados */}
+      {links && links.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ExternalLink className="h-5 w-5" />
+              Enlaces Relacionados
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {links.map((link) => (
+                <div key={link.id} className="border rounded p-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-sm">{link.title}</h4>
+                      {link.description && (
+                        <p className="text-xs text-muted-foreground mt-1">{link.description}</p>
+                      )}
+                    </div>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => window.open(link.url, '_blank')}
+                    >
+                      <ExternalLink className="h-3 w-3 mr-1" />
+                      Abrir
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {user && (
         <Card>

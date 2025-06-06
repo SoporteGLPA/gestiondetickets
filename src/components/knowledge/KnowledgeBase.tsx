@@ -1,5 +1,6 @@
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useKnowledgeArticles } from '@/hooks/useKnowledge';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +13,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 export function KnowledgeBase() {
+  const navigate = useNavigate();
   const { hasRole } = useAuth();
   const { data: articles, isLoading } = useKnowledgeArticles();
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -73,7 +75,7 @@ export function KnowledgeBase() {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filteredArticles?.map((article) => (
-          <Card key={article.id} className="hover:shadow-md transition-shadow">
+          <Card key={article.id} className="hover:shadow-md transition-shadow cursor-pointer">
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
@@ -125,7 +127,12 @@ export function KnowledgeBase() {
                   </div>
                 </div>
 
-                <Button variant="outline" size="sm" className="w-full">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full"
+                  onClick={() => navigate(`/knowledge/${article.id}`)}
+                >
                   <Eye className="h-4 w-4 mr-2" />
                   Leer Artículo
                 </Button>

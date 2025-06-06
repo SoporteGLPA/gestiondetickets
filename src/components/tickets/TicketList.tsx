@@ -3,11 +3,13 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTickets } from '@/hooks/useTickets';
 import { useAuth } from '@/hooks/useAuth';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Eye, Calendar, User } from 'lucide-react';
 import { CreateTicketForm } from '@/components/forms/CreateTicketForm';
+import { TicketStatusDropdown } from '@/components/tickets/TicketStatusDropdown';
+import { TicketOperations } from '@/components/tickets/TicketOperations';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -73,9 +75,10 @@ export function TicketList() {
                     <Badge variant={getPriorityColor(ticket.priority)}>
                       {ticket.priority.toUpperCase()}
                     </Badge>
-                    <Badge variant={getStatusColor(ticket.status)}>
-                      {ticket.status.replace('_', ' ').toUpperCase()}
-                    </Badge>
+                    <TicketStatusDropdown 
+                      ticketId={ticket.id} 
+                      currentStatus={ticket.status} 
+                    />
                     {ticket.ticket_categories && (
                       <Badge variant="outline" style={{ backgroundColor: ticket.ticket_categories.color + '20' }}>
                         {ticket.ticket_categories.name}
@@ -91,6 +94,12 @@ export function TicketList() {
                       <User className="h-3 w-3" />
                       <span>{ticket.profiles_customer?.full_name}</span>
                     </div>
+                    {ticket.profiles_assignee && (
+                      <div className="flex items-center space-x-1">
+                        <User className="h-3 w-3" />
+                        <span>Asignado a: {ticket.profiles_assignee.full_name}</span>
+                      </div>
+                    )}
                     <div className="flex items-center space-x-1">
                       <Calendar className="h-3 w-3" />
                       <span>
@@ -112,6 +121,10 @@ export function TicketList() {
                   <Eye className="h-4 w-4 mr-1" />
                   Ver Detalle
                 </Button>
+                <TicketOperations 
+                  ticketId={ticket.id} 
+                  ticketNumber={ticket.ticket_number}
+                />
               </div>
             </CardContent>
           </Card>
