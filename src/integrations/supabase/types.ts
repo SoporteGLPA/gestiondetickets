@@ -127,6 +127,170 @@ export type Database = {
           },
         ]
       }
+      collaboration_areas: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      company_settings: {
+        Row: {
+          auth_background_url: string | null
+          created_at: string
+          id: string
+          logo_url: string | null
+          primary_color: string | null
+          project_name: string
+          secondary_color: string | null
+          updated_at: string
+        }
+        Insert: {
+          auth_background_url?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          project_name?: string
+          secondary_color?: string | null
+          updated_at?: string
+        }
+        Update: {
+          auth_background_url?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          project_name?: string
+          secondary_color?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      custom_ticket_statuses: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_closed_status: boolean
+          name: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_closed_status?: boolean
+          name: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_closed_status?: boolean
+          name?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      department_categories: {
+        Row: {
+          color: string | null
+          created_at: string
+          department_id: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          department_id: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          department_id?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "department_categories_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      departments: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       knowledge_articles: {
         Row: {
           author_id: string
@@ -212,6 +376,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          collaboration_area_id: string | null
           created_at: string
           department: string | null
           email: string
@@ -224,6 +389,7 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          collaboration_area_id?: string | null
           created_at?: string
           department?: string | null
           email: string
@@ -236,6 +402,7 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          collaboration_area_id?: string | null
           created_at?: string
           department?: string | null
           email?: string
@@ -246,7 +413,15 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_collaboration_area_id_fkey"
+            columns: ["collaboration_area_id"]
+            isOneToOne: false
+            referencedRelation: "collaboration_areas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ticket_attachments: {
         Row: {
@@ -454,6 +629,7 @@ export type Database = {
           category_id: string | null
           created_at: string
           customer_id: string
+          department_id: string | null
           description: string
           id: string
           merged_ticket_info: Json | null
@@ -470,6 +646,7 @@ export type Database = {
           category_id?: string | null
           created_at?: string
           customer_id: string
+          department_id?: string | null
           description: string
           id?: string
           merged_ticket_info?: Json | null
@@ -486,6 +663,7 @@ export type Database = {
           category_id?: string | null
           created_at?: string
           customer_id?: string
+          department_id?: string | null
           description?: string
           id?: string
           merged_ticket_info?: Json | null
@@ -515,6 +693,49 @@ export type Database = {
           {
             foreignKeyName: "tickets_customer_id_fkey"
             columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tickets_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_collaboration_areas: {
+        Row: {
+          area_id: string
+          assigned_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          area_id: string
+          assigned_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          area_id?: string
+          assigned_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_collaboration_areas_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "collaboration_areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_collaboration_areas_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]

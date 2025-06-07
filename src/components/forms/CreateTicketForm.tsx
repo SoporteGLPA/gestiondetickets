@@ -11,12 +11,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useCreateTicket } from '@/hooks/useTickets';
 import { useCategories } from '@/hooks/useCategories';
+import { useDepartments, useDepartmentCategories } from '@/hooks/useDepartments';
 import { useAuth } from '@/hooks/useAuth';
 
 const ticketSchema = z.object({
   title: z.string().min(1, 'El título es requerido'),
   description: z.string().min(1, 'La descripción es requerida'),
   priority: z.enum(['baja', 'media', 'alta']),
+  department_id: z.string().min(1, 'El departamento es requerido'),
   category_id: z.string().optional(),
 });
 
@@ -30,7 +32,9 @@ interface CreateTicketFormProps {
 export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) {
   const { user } = useAuth();
   const createTicketMutation = useCreateTicket();
-  const { data: categories } = useCategories();
+  const { data: departments } = useDepartments();
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>('');
+  const { data: departmentCategories } = useDepartmentCategories(selectedDepartmentId);
 
   const form = useForm<TicketFormData>({
     resolver: zodResolver(ticketSchema),
@@ -38,6 +42,7 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
       title: '',
       description: '',
       priority: 'media',
+      department_id: '',
       category_id: '',
     },
   });
@@ -45,18 +50,25 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
   const onSubmit = async (data: TicketFormData) => {
     if (!user) return;
 
-    // Ensure all required fields are present
     const ticketData = {
       title: data.title,
       description: data.description,
       priority: data.priority,
+      department_id: data.department_id,
       category_id: data.category_id || undefined,
       customer_id: user.id,
     };
 
     await createTicketMutation.mutateAsync(ticketData);
     form.reset();
+    setSelectedDepartmentId('');
     onOpenChange(false);
+  };
+
+  const handleDepartmentChange = (departmentId: string) => {
+    setSelectedDepartmentId(departmentId);
+    form.setValue('department_id', departmentId);
+    form.setValue('category_id', ''); // Reset category when department changes
   };
 
   return (
@@ -101,6 +113,64 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
 
             <FormField
               control={form.control}
+              name="department_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Departamento</FormLabel>
+                  <Select onValueChange={handleDepartmentChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccione un departamento" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {departments?.map((department) => (
+                        <SelectItem key={department.id} value={department.id}>
+                          {department.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {selectedDepartmentId && departmentCategories && departmentCategories.length > 0 && (
+              <FormField
+                control={form.control}
+                name="category_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Categoría</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccione una categoría" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {departmentCategories.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full" 
+                                style={{ backgroundColor: category.color }}
+                              />
+                              {category.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            <FormField
+              control={form.control}
               name="priority"
               render={({ field }) => (
                 <FormItem>
@@ -115,31 +185,6 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
                       <SelectItem value="baja">Baja</SelectItem>
                       <SelectItem value="media">Media</SelectItem>
                       <SelectItem value="alta">Alta</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="category_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Categoría</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccione una categoría" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {categories?.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />

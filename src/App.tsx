@@ -14,6 +14,8 @@ import Tickets from "./pages/Tickets";
 import Knowledge from "./pages/Knowledge";
 import Users from "./pages/Users";
 import Reports from "./pages/Reports";
+import Settings from "./pages/Settings";
+import Departments from "./pages/settings/Departments";
 import NotFound from "./pages/NotFound";
 import TicketDetail from "./pages/TicketDetail";
 
@@ -54,6 +56,16 @@ const App = () => (
               <Route path="reports" element={
                 <ProtectedRoute requiredRoles={['admin', 'agent']}>
                   <Reports />
+                </ProtectedRoute>
+              } />
+              <Route path="settings" element={
+                <ProtectedRoute requiredRoles={['admin', 'agent']}>
+                  <Settings />
+                </ProtectedRoute>
+              } />
+              <Route path="settings/departments" element={
+                <ProtectedRoute requiredRoles={['admin', 'agent']}>
+                  <Departments />
                 </ProtectedRoute>
               } />
             </Route>
