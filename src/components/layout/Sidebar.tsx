@@ -46,7 +46,7 @@ export function Sidebar() {
   const shouldShowExpanded = isMobile ? !isCollapsed : (!isCollapsed || isHovered);
 
   const filteredNavigation = navigation.filter(item => 
-    item.roles.some(role => hasRole(role))
+    item.roles.some(role => hasRole([role]))
   );
 
   return (

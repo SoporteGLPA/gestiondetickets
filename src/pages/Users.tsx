@@ -25,7 +25,7 @@ const Users = () => {
   const [editingUser, setEditingUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  if (!hasRole('admin')) {
+  if (!hasRole(['admin'])) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Card>
