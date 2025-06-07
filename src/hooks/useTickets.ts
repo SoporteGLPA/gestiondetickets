@@ -36,10 +36,10 @@ export interface Ticket {
   };
   departments?: {
     name: string;
-  };
-  department_categories?: {
-    name: string;
-    color: string;
+    department_categories?: {
+      name: string;
+      color: string;
+    }[];
   };
 }
 
@@ -56,8 +56,10 @@ export function useTickets(showClosed: boolean = false) {
           profiles_customer:profiles!customer_id(full_name, email),
           profiles_assignee:profiles!assignee_id(full_name, email),
           ticket_categories(name, color),
-          departments(name),
-          department_categories:department_categories!category_id(name, color)
+          departments(
+            name,
+            department_categories(name, color)
+          )
         `);
 
       if (showClosed) {
