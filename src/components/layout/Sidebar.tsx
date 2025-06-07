@@ -1,172 +1,172 @@
 
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useAuth } from '@/hooks/useAuth';
-import { useSidebarState } from '@/hooks/useSidebarState';
 import { 
   LayoutDashboard, 
   Ticket, 
   BookOpen, 
   Users, 
-  Settings, 
   BarChart3,
-  Menu,
-  X
+  ChevronLeft,
+  ChevronRight,
+  Menu
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { useSidebarState } from '@/hooks/useSidebarState';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'agent', 'user'] },
   { name: 'Tickets', href: '/tickets', icon: Ticket, roles: ['admin', 'agent', 'user'] },
   { name: 'Base de Conocimientos', href: '/knowledge', icon: BookOpen, roles: ['admin', 'agent', 'user'] },
-  { name: 'Usuarios', href: '/users', icon: Users, roles: ['admin', 'agent'] },
+  { name: 'Usuarios', href: '/users', icon: Users, roles: ['admin'] },
   { name: 'Reportes', href: '/reports', icon: BarChart3, roles: ['admin', 'agent'] },
-  { name: 'Configuración', href: '/settings', icon: Settings, roles: ['admin', 'agent'] },
 ];
 
-interface SidebarProps {
-  className?: string;
-  onToggle?: (isExpanded: boolean) => void;
-}
-
-export function Sidebar({ className, onToggle }: SidebarProps) {
-  const { isExpanded, isMobile, handleMouseEnter, handleMouseLeave, toggleSidebar } = useSidebarState();
+export function Sidebar() {
   const location = useLocation();
-  const { profile } = useAuth();
+  const navigate = useNavigate();
+  const { hasRole } = useAuth();
+  const { isCollapsed, setIsCollapsed } = useSidebarState();
+  const [isHovered, setIsHovered] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
+  // Detect mobile screen
   useEffect(() => {
-    onToggle?.(isExpanded);
-  }, [isExpanded, onToggle]);
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const shouldShowExpanded = isMobile ? !isCollapsed : (!isCollapsed || isHovered);
 
   const filteredNavigation = navigation.filter(item => 
-    profile?.role ? item.roles.includes(profile.role) : false
+    item.roles.some(role => hasRole(role))
   );
 
-  // Navegación móvil en la parte inferior
-  if (isMobile) {
-    return (
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border">
-        <div className="flex justify-around items-center py-2 px-1">
-          {filteredNavigation.slice(0, 5).map((item) => {
-            const isActive = location.pathname === item.href;
-            return (
-              <Link
-                key={item.name}
-                to={item.href}
-                className={cn(
-                  "flex flex-col items-center p-2 rounded-lg text-xs font-medium transition-colors min-w-0",
-                  isActive 
-                    ? "text-primary bg-primary/10" 
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                )}
-              >
-                <item.icon className="h-5 w-5 mb-1" />
-                <span className="truncate max-w-[60px]">
-                  {item.name.split(' ')[0]}
-                </span>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  // Sidebar desktop con hover
   return (
     <>
-      {/* Overlay for mobile when expanded */}
-      {isMobile && isExpanded && (
+      {/* Mobile overlay */}
+      {isMobile && !isCollapsed && (
         <div 
-          className="fixed inset-0 bg-black/50 z-40"
-          onClick={toggleSidebar}
+          className="fixed inset-0 bg-black/20 z-40 md:hidden"
+          onClick={() => setIsCollapsed(true)}
         />
       )}
 
+      {/* Sidebar */}
       <div
         className={cn(
-          "fixed left-0 top-0 h-screen bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300 z-50",
-          isExpanded ? "w-64" : "w-16",
-          className
+          "fixed left-0 top-0 z-50 h-full bg-card border-r transition-all duration-300 flex flex-col",
+          shouldShowExpanded ? "w-64" : "w-16",
+          isMobile && isCollapsed && "-translate-x-full"
         )}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
+        onMouseEnter={() => !isMobile && setIsHovered(true)}
+        onMouseLeave={() => !isMobile && setIsHovered(false)}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
-          {isExpanded ? (
-            <>
-              <div className="flex items-center gap-2">
+        <div className="p-4 border-b">
+          <div className="flex items-center justify-between">
+            <div className={cn(
+              "flex items-center space-x-3",
+              !shouldShowExpanded && "justify-center"
+            )}>
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                 <img 
                   src="/logo.jpg" 
-                  alt="SoporteTech Logo" 
-                  className="w-8 h-8 rounded-lg object-cover"
+                  alt="Soporte GLPA" 
+                  className="w-6 h-6 object-contain"
                 />
-                <h1 className="text-xl font-bold text-sidebar-primary">SoporteTech</h1>
               </div>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={toggleSidebar}
-                className="p-1 h-8 w-8"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </>
-          ) : (
-            <div className="flex justify-center w-full">
-              <img 
-                src="/logo.jpg" 
-                alt="SoporteTech Logo" 
-                className="w-8 h-8 rounded-lg object-cover"
-              />
+              {shouldShowExpanded && (
+                <div>
+                  <h1 className="text-lg font-bold text-primary">Soporte GLPA</h1>
+                  <p className="text-xs text-muted-foreground">Sistema de Tickets</p>
+                </div>
+              )}
             </div>
-          )}
+            {isMobile && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsCollapsed(true)}
+                className="md:hidden"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Navigation */}
-        <ScrollArea className="flex-1 px-3 py-4">
-          <nav className="space-y-2">
+        <nav className="flex-1 p-4">
+          <ul className="space-y-2">
             {filteredNavigation.map((item) => {
-              const isActive = location.pathname === item.href;
+              const isActive = location.pathname === item.href || 
+                (item.href !== '/' && location.pathname.startsWith(item.href));
+              
               return (
-                <Link
-                  key={item.name}
-                  to={item.href}
-                  className={cn(
-                    "flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                    isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground",
-                    !isExpanded && "justify-center"
-                  )}
-                  title={!isExpanded ? item.name : undefined}
-                >
-                  <item.icon className={cn("h-4 w-4", isExpanded && "mr-3")} />
-                  {isExpanded && <span>{item.name}</span>}
-                </Link>
+                <li key={item.name}>
+                  <Button
+                    variant={isActive ? "default" : "ghost"}
+                    className={cn(
+                      "w-full justify-start h-11",
+                      !shouldShowExpanded && "justify-center px-2"
+                    )}
+                    onClick={() => navigate(item.href)}
+                  >
+                    <item.icon className="h-5 w-5 shrink-0" />
+                    {shouldShowExpanded && (
+                      <span className="ml-3 text-sm font-medium">{item.name}</span>
+                    )}
+                  </Button>
+                </li>
               );
             })}
-          </nav>
-        </ScrollArea>
+          </ul>
+        </nav>
 
-        {/* User Info */}
-        {isExpanded && (
-          <div className="p-4 border-t border-sidebar-border">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-sidebar-primary rounded-full flex items-center justify-center">
-                <span className="text-sidebar-primary-foreground text-sm font-medium">
-                  {profile?.full_name?.charAt(0).toUpperCase() || 'U'}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{profile?.full_name || 'Usuario'}</p>
-                <p className="text-xs text-sidebar-foreground/70 truncate">{profile?.email}</p>
-              </div>
-            </div>
+        {/* Toggle button for desktop */}
+        {!isMobile && (
+          <div className="p-4 border-t">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className={cn(
+                "w-full",
+                !shouldShowExpanded && "justify-center px-2"
+              )}
+            >
+              {isCollapsed ? (
+                <ChevronRight className="h-4 w-4" />
+              ) : (
+                <ChevronLeft className="h-4 w-4" />
+              )}
+              {shouldShowExpanded && (
+                <span className="ml-2 text-sm">Contraer</span>
+              )}
+            </Button>
           </div>
         )}
       </div>
+
+      {/* Mobile menu button */}
+      {isMobile && isCollapsed && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="fixed top-4 left-4 z-50 md:hidden"
+          onClick={() => setIsCollapsed(false)}
+        >
+          <Menu className="h-4 w-4" />
+        </Button>
+      )}
     </>
   );
 }
