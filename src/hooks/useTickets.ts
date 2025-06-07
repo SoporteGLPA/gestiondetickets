@@ -57,7 +57,7 @@ export function useTickets(showClosed: boolean = false) {
           profiles_assignee:profiles!assignee_id(full_name, email),
           ticket_categories(name, color),
           departments(name),
-          department_categories!category_id(name, color)
+          department_categories:department_categories!category_id(name, color)
         `);
 
       if (showClosed) {

@@ -50,16 +50,23 @@ const Departments = () => {
   });
 
   const onSubmitDepartment = async (data: DepartmentFormData) => {
-    await createDepartmentMutation.mutateAsync(data);
+    const submitData = {
+      name: data.name,
+      description: data.description,
+    };
+    await createDepartmentMutation.mutateAsync(submitData);
     departmentForm.reset();
     setShowDepartmentForm(false);
   };
 
   const onSubmitCategory = async (data: CategoryFormData) => {
-    await createCategoryMutation.mutateAsync({
-      ...data,
+    const submitData = {
+      name: data.name,
+      description: data.description,
+      color: data.color,
       department_id: selectedDepartmentId,
-    });
+    };
+    await createCategoryMutation.mutateAsync(submitData);
     categoryForm.reset();
     setShowCategoryForm(false);
   };
