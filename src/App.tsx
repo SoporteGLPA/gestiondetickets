@@ -16,6 +16,9 @@ import Users from "./pages/Users";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import Departments from "./pages/settings/Departments";
+import TicketStatuses from "./pages/settings/TicketStatuses";
+import Company from "./pages/settings/Company";
+import CollaborationAreas from "./pages/settings/CollaborationAreas";
 import NotFound from "./pages/NotFound";
 import TicketDetail from "./pages/TicketDetail";
 
@@ -66,6 +69,21 @@ const App = () => (
               <Route path="settings/departments" element={
                 <ProtectedRoute requiredRoles={['admin', 'agent']}>
                   <Departments />
+                </ProtectedRoute>
+              } />
+              <Route path="settings/ticket-statuses" element={
+                <ProtectedRoute requiredRoles={['admin', 'agent']}>
+                  <TicketStatuses />
+                </ProtectedRoute>
+              } />
+              <Route path="settings/company" element={
+                <ProtectedRoute requiredRoles={['admin', 'agent']}>
+                  <Company />
+                </ProtectedRoute>
+              } />
+              <Route path="settings/collaboration-areas" element={
+                <ProtectedRoute requiredRoles={['admin', 'agent']}>
+                  <CollaborationAreas />
                 </ProtectedRoute>
               } />
             </Route>

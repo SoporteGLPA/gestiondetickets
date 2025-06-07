@@ -10,7 +10,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useCreateTicket } from '@/hooks/useTickets';
-import { useCategories } from '@/hooks/useCategories';
 import { useDepartments, useDepartmentCategories } from '@/hooks/useDepartments';
 import { useAuth } from '@/hooks/useAuth';
 
