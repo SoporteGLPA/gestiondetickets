@@ -16,7 +16,7 @@ interface Comment {
   id: string;
   content: string;
   created_at: string;
-  author_id: string;
+  user_id: string;
   is_internal: boolean;
   profiles: {
     full_name: string;
@@ -43,7 +43,7 @@ export function TicketChat({ ticketId }: TicketChatProps) {
         .from('ticket_comments')
         .select(`
           *,
-          profiles:author_id(full_name, email)
+          profiles:user_id(full_name, email)
         `)
         .eq('ticket_id', ticketId)
         .order('created_at', { ascending: true });
@@ -62,12 +62,12 @@ export function TicketChat({ ticketId }: TicketChatProps) {
         .insert({
           ticket_id: ticketId,
           content,
-          author_id: user.id,
+          user_id: user.id,
           is_internal: isInternal,
         })
         .select(`
           *,
-          profiles:author_id(full_name, email)
+          profiles:user_id(full_name, email)
         `)
         .single();
 
@@ -167,7 +167,7 @@ export function TicketChat({ ticketId }: TicketChatProps) {
               <div
                 key={comment.id}
                 className={`flex gap-3 ${
-                  comment.author_id === user?.id ? 'flex-row-reverse' : 'flex-row'
+                  comment.user_id === user?.id ? 'flex-row-reverse' : 'flex-row'
                 }`}
               >
                 <Avatar className="h-8 w-8 flex-shrink-0">
@@ -177,7 +177,7 @@ export function TicketChat({ ticketId }: TicketChatProps) {
                 </Avatar>
                 <div
                   className={`flex flex-col max-w-[80%] ${
-                    comment.author_id === user?.id ? 'items-end' : 'items-start'
+                    comment.user_id === user?.id ? 'items-end' : 'items-start'
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1">
@@ -198,7 +198,7 @@ export function TicketChat({ ticketId }: TicketChatProps) {
                   </div>
                   <div
                     className={`rounded-lg px-3 py-2 text-sm ${
-                      comment.author_id === user?.id
+                      comment.user_id === user?.id
                         ? 'bg-emerald-600 text-white'
                         : comment.is_internal
                         ? 'bg-orange-50 border border-orange-200'
