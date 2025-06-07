@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -34,28 +35,22 @@ export interface Ticket {
   };
 }
 
-export function useTickets(includeClosedTickets: boolean = false) {
+export function useTickets() {
   const { toast } = useToast();
 
   return useQuery({
-    queryKey: ['tickets', includeClosedTickets],
+    queryKey: ['tickets'],
     queryFn: async () => {
-      let query = supabase
+      const { data, error } = await supabase
         .from('tickets')
         .select(`
           *,
           profiles_customer:profiles!customer_id(full_name, email),
           profiles_assignee:profiles!assignee_id(full_name, email),
           ticket_categories(name, color)
-        `);
-
-      if (!includeClosedTickets) {
-        query = query.neq('status', 'cerrado');
-      } else {
-        query = query.eq('status', 'cerrado');
-      }
-
-      const { data, error } = await query.order('created_at', { ascending: false });
+        `)
+        .neq('status', 'cerrado') // Filtrar tickets cerrados (fusionados)
+        .order('created_at', { ascending: false });
 
       if (error) {
         toast({

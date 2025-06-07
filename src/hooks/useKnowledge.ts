@@ -1,3 +1,4 @@
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -260,69 +261,6 @@ export function useArticleLinks() {
         variant: "destructive",
         title: "Error",
         description: "No se pudo agregar el enlace",
-      });
-    },
-  });
-}
-
-export function useUpdateArticle() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  return useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; [key: string]: any }) => {
-      const { data, error } = await supabase
-        .from('knowledge_articles')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['knowledge-articles'] });
-      toast({
-        title: "Artículo actualizado",
-        description: "El artículo ha sido actualizado exitosamente",
-      });
-    },
-    onError: (error) => {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo actualizar el artículo",
-      });
-    },
-  });
-}
-
-export function useDeleteArticle() {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('knowledge_articles')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['knowledge-articles'] });
-      toast({
-        title: "Artículo eliminado",
-        description: "El artículo ha sido eliminado exitosamente",
-      });
-    },
-    onError: (error) => {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo eliminar el artículo",
       });
     },
   });

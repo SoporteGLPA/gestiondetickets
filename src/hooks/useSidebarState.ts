@@ -42,8 +42,6 @@ export function useSidebarState() {
 
   return {
     isExpanded,
-    isCollapsed: !isExpanded,
-    setIsCollapsed: setIsExpanded,
     isMobile,
     isHovered,
     toggleSidebar,

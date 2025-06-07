@@ -1,5 +1,5 @@
 
-import { Bell, Search, User, LogOut, X } from 'lucide-react';
+import { Bell, Search, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -17,37 +17,11 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
-import { useState, useRef, useEffect } from 'react';
-import { SearchResults } from '@/components/search/SearchResults';
 
 export function Header() {
   const { profile, signOut } = useAuth();
   const { notifications, unreadNotifications, markAsViewed } = useNotifications();
   const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showResults, setShowResults] = useState(false);
-  const searchRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
-        setShowResults(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  const handleSearchChange = (value: string) => {
-    setSearchTerm(value);
-    setShowResults(value.length >= 2);
-  };
-
-  const clearSearch = () => {
-    setSearchTerm('');
-    setShowResults(false);
-  };
 
   const handleNotificationClick = (notification: any) => {
     const ticketId = profile?.role === 'user' ? notification.ticket_id : notification.id;
@@ -92,33 +66,12 @@ export function Header() {
       <div className="flex h-16 items-center justify-between px-4 md:px-6">
         {/* Search */}
         <div className="flex items-center space-x-4 flex-1 max-w-md">
-          <div className="relative w-full" ref={searchRef}>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Buscar tickets, artículos..."
-                className="pl-10 pr-8 w-full"
-                value={searchTerm}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                onFocus={() => searchTerm.length >= 2 && setShowResults(true)}
-              />
-              {searchTerm && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-                  onClick={clearSearch}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              )}
-            </div>
-            {showResults && (
-              <SearchResults 
-                searchTerm={searchTerm} 
-                onClose={() => setShowResults(false)} 
-              />
-            )}
+          <div className="relative w-full">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+            <Input
+              placeholder="Buscar tickets, artículos..."
+              className="pl-10 w-full"
+            />
           </div>
         </div>
 
