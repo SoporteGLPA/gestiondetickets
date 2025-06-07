@@ -35,22 +35,28 @@ export interface Ticket {
   };
 }
 
-export function useTickets() {
+export function useTickets(showClosed: boolean = false) {
   const { toast } = useToast();
 
   return useQuery({
-    queryKey: ['tickets'],
+    queryKey: ['tickets', showClosed],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('tickets')
         .select(`
           *,
           profiles_customer:profiles!customer_id(full_name, email),
           profiles_assignee:profiles!assignee_id(full_name, email),
           ticket_categories(name, color)
-        `)
-        .neq('status', 'cerrado') // Filtrar tickets cerrados (fusionados)
-        .order('created_at', { ascending: false });
+        `);
+
+      if (showClosed) {
+        query = query.eq('status', 'cerrado');
+      } else {
+        query = query.neq('status', 'cerrado');
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) {
         toast({

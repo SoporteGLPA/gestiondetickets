@@ -1,329 +1,252 @@
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Send, MessageCircle } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Send, Paperclip, File, Download } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+
+interface Comment {
+  id: string;
+  content: string;
+  created_at: string;
+  author_id: string;
+  is_internal: boolean;
+  profiles: {
+    full_name: string;
+    email: string;
+  };
+}
 
 interface TicketChatProps {
   ticketId: string;
 }
 
 export function TicketChat({ ticketId }: TicketChatProps) {
-  const [message, setMessage] = useState('');
-  const [attachments, setAttachments] = useState<File[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user, profile } = useAuth();
+  const [newComment, setNewComment] = useState('');
+  const [isInternal, setIsInternal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { user } = useAuth();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
-  // Scroll to bottom when new messages arrive
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  // Fetch comments with real-time updates
-  const { data: comments = [] } = useQuery({
+  const { data: comments, isLoading } = useQuery({
     queryKey: ['ticket-comments', ticketId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('ticket_comments')
         .select(`
           *,
-          profiles(full_name, role),
-          ticket_comment_attachments(*)
+          profiles:author_id(full_name, email)
         `)
         .eq('ticket_id', ticketId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
-      return data;
+      return data as Comment[];
     },
   });
 
-  // Set up real-time subscription
+  const addCommentMutation = useMutation({
+    mutationFn: async ({ content, isInternal }: { content: string; isInternal: boolean }) => {
+      if (!user) throw new Error('User not authenticated');
+
+      const { data, error } = await supabase
+        .from('ticket_comments')
+        .insert({
+          ticket_id: ticketId,
+          content,
+          author_id: user.id,
+          is_internal: isInternal,
+        })
+        .select(`
+          *,
+          profiles:author_id(full_name, email)
+        `)
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ticket-comments', ticketId] });
+      setNewComment('');
+      toast({
+        title: "Comentario agregado",
+        description: "Tu comentario ha sido agregado exitosamente",
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo agregar el comentario",
+      });
+    },
+  });
+
+  // Configurar realtime para comentarios
   useEffect(() => {
     const channel = supabase
-      .channel(`ticket-comments-${ticketId}`)
+      .channel('ticket-comments')
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'ticket_comments',
-          filter: `ticket_id=eq.${ticketId}`
+          filter: `ticket_id=eq.${ticketId}`,
         },
-        (payload) => {
-          console.log('Real-time update received:', payload);
+        () => {
           queryClient.invalidateQueries({ queryKey: ['ticket-comments', ticketId] });
         }
       )
-      .subscribe((status) => {
-        console.log('Subscription status:', status);
-      });
+      .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, [ticketId, queryClient]);
 
-  // Scroll to bottom when comments change
   useEffect(() => {
     scrollToBottom();
   }, [comments]);
 
-  // Add comment mutation
-  const addCommentMutation = useMutation({
-    mutationFn: async (commentData: { content: string; is_internal: boolean }) => {
-      const { data, error } = await supabase
-        .from('ticket_comments')
-        .insert({
-          ticket_id: ticketId,
-          user_id: user!.id,
-          content: commentData.content,
-          is_internal: commentData.is_internal,
-        })
-        .select()
-        .single();
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: async (comment) => {
-      // Upload attachments if any
-      for (const file of attachments) {
-        if (file.size > 4 * 1024 * 1024) { // 4MB limit
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: `El archivo ${file.name} excede el límite de 4MB`,
-          });
-          continue;
-        }
-
-        // Convert file to base64 for simple storage simulation
-        const reader = new FileReader();
-        reader.onload = async () => {
-          const { error: attachmentError } = await supabase
-            .from('ticket_comment_attachments')
-            .insert({
-              comment_id: comment.id,
-              file_name: file.name,
-              file_path: `data:${file.type};base64,${reader.result?.toString().split(',')[1]}`,
-              file_size: file.size,
-              mime_type: file.type,
-            });
-
-          if (attachmentError) {
-            console.error('Error saving attachment:', attachmentError);
-          } else {
-            queryClient.invalidateQueries({ queryKey: ['ticket-comments', ticketId] });
-          }
-        };
-        reader.readAsDataURL(file);
-      }
-
-      setMessage('');
-      setAttachments([]);
-    },
-  });
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim() && attachments.length === 0) return;
+    if (!newComment.trim()) return;
 
-    try {
-      await addCommentMutation.mutateAsync({
-        content: message || 'Archivo adjunto',
-        is_internal: false,
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo enviar el mensaje",
-      });
-    }
+    addCommentMutation.mutate({
+      content: newComment.trim(),
+      isInternal,
+    });
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setAttachments(prev => [...prev, ...files]);
-  };
+  const canSeeInternalComments = profile?.role === 'admin' || profile?.role === 'agent';
 
-  const removeAttachment = (index: number) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
-  };
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+      </div>
+    );
+  }
 
-  const downloadAttachment = (attachment: any) => {
-    try {
-      // Create download link from base64 data
-      const link = document.createElement('a');
-      link.href = attachment.file_path;
-      link.download = attachment.file_name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      toast({
-        title: "Descarga iniciada",
-        description: `Descargando ${attachment.file_name}...`,
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo descargar el archivo",
-      });
-    }
-  };
+  const visibleComments = comments?.filter(comment => 
+    !comment.is_internal || canSeeInternalComments
+  ) || [];
 
   return (
-    <div className="space-y-4">
-      {/* Messages */}
-      <div className="space-y-3 max-h-96 overflow-y-auto">
-        {comments.map((comment) => (
-          <div
-            key={comment.id}
-            className={`flex ${comment.user_id === user?.id ? 'justify-end' : 'justify-start'}`}
-          >
-            <div className={`flex items-start space-x-2 max-w-[70%] ${
-              comment.user_id === user?.id ? 'flex-row-reverse space-x-reverse' : ''
-            }`}>
-              <Avatar className="h-8 w-8">
-                <AvatarFallback>
-                  {comment.profiles?.full_name?.split(' ').map(n => n[0]).join('') || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div className={`rounded-lg p-3 ${
-                comment.user_id === user?.id
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted'
-              }`}>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-medium">
-                    {comment.profiles?.full_name}
-                  </span>
-                  {comment.profiles?.role === 'agent' && (
-                    <span className="text-xs bg-blue-100 text-blue-800 px-1 rounded">
-                      Agente
-                    </span>
-                  )}
-                  {comment.profiles?.role === 'admin' && (
-                    <span className="text-xs bg-red-100 text-red-800 px-1 rounded">
-                      Admin
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm whitespace-pre-wrap">{comment.content}</p>
-                
-                {/* Show attachments */}
-                {comment.ticket_comment_attachments && comment.ticket_comment_attachments.length > 0 && (
-                  <div className="mt-2 space-y-1">
-                    {comment.ticket_comment_attachments.map((attachment: any) => (
-                      <div key={attachment.id} className="flex items-center gap-2 p-2 bg-background/50 rounded">
-                        <File className="h-4 w-4" />
-                        <span className="text-xs truncate flex-1">{attachment.file_name}</span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => downloadAttachment(attachment)}
-                          className="h-6 w-6 p-1"
-                        >
-                          <Download className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                
-                <p className="text-xs opacity-70 mt-1">
-                  {formatDistanceToNow(new Date(comment.created_at), { 
-                    addSuffix: true, 
-                    locale: es 
-                  })}
-                </p>
-              </div>
+    <Card className="h-full flex flex-col">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-emerald-800">
+          <MessageCircle className="h-5 w-5" />
+          Conversación
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex-1 flex flex-col p-3 md:p-6">
+        <div className="flex-1 overflow-y-auto space-y-4 mb-4 max-h-96 md:max-h-none">
+          {visibleComments.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <MessageCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <p>No hay comentarios aún</p>
+              <p className="text-sm">Inicia la conversación</p>
             </div>
-          </div>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Attachments preview */}
-      {attachments.length > 0 && (
-        <div className="space-y-2">
-          {attachments.map((file, index) => (
-            <div key={index} className="flex items-center justify-between bg-muted p-2 rounded">
-              <div className="flex items-center gap-2">
-                <File className="h-4 w-4" />
-                <span className="text-sm">{file.name}</span>
-                <span className="text-xs text-muted-foreground">
-                  ({(file.size / 1024 / 1024).toFixed(1)} MB)
-                </span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => removeAttachment(index)}
+          ) : (
+            visibleComments.map((comment) => (
+              <div
+                key={comment.id}
+                className={`flex gap-3 ${
+                  comment.author_id === user?.id ? 'flex-row-reverse' : 'flex-row'
+                }`}
               >
-                ×
-              </Button>
-            </div>
-          ))}
+                <Avatar className="h-8 w-8 flex-shrink-0">
+                  <AvatarFallback className="text-xs">
+                    {comment.profiles?.full_name?.split(' ').map(n => n[0]).join('') || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <div
+                  className={`flex flex-col max-w-[80%] ${
+                    comment.author_id === user?.id ? 'items-end' : 'items-start'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {comment.profiles?.full_name || 'Usuario'}
+                    </span>
+                    {comment.is_internal && (
+                      <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
+                        Interno
+                      </span>
+                    )}
+                    <span className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(comment.created_at), {
+                        addSuffix: true,
+                        locale: es,
+                      })}
+                    </span>
+                  </div>
+                  <div
+                    className={`rounded-lg px-3 py-2 text-sm ${
+                      comment.author_id === user?.id
+                        ? 'bg-emerald-600 text-white'
+                        : comment.is_internal
+                        ? 'bg-orange-50 border border-orange-200'
+                        : 'bg-gray-100 text-gray-900'
+                    }`}
+                  >
+                    {comment.content}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+          <div ref={messagesEndRef} />
         </div>
-      )}
 
-      {/* Input form */}
-      <form onSubmit={handleSubmit} className="space-y-2">
-        <div className="flex gap-2">
-          <Textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Escribe tu mensaje..."
-            className="flex-1 min-h-[60px] resize-none"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
-              }
-            }}
-          />
-          <div className="flex flex-col gap-2">
+        <form onSubmit={handleSubmit} className="space-y-3">
+          {canSeeInternalComments && (
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="internal"
+                checked={isInternal}
+                onChange={(e) => setIsInternal(e.target.checked)}
+                className="rounded border-emerald-300 focus:ring-emerald-500"
+              />
+              <label htmlFor="internal" className="text-sm text-muted-foreground">
+                Comentario interno (solo visible para agentes y administradores)
+              </label>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Input
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Escribe tu comentario..."
+              className="flex-1 focus:ring-emerald-500 focus:border-emerald-500"
+              disabled={addCommentMutation.isPending}
+            />
             <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Paperclip className="h-4 w-4" />
-            </Button>
-            <Button 
-              type="submit" 
-              size="sm"
-              disabled={!message.trim() && attachments.length === 0}
+              type="submit"
+              disabled={!newComment.trim() || addCommentMutation.isPending}
+              className="bg-emerald-600 hover:bg-emerald-700 px-3"
             >
               <Send className="h-4 w-4" />
             </Button>
           </div>
-        </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          className="hidden"
-          onChange={handleFileSelect}
-          accept="image/*,.pdf,.doc,.docx,.txt"
-        />
-      </form>
-    </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 }
