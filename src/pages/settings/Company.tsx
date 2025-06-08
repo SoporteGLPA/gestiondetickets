@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Settings, Upload, Image } from 'lucide-react';
 import { useCompanySettings, useUpdateCompanySettings } from '@/hooks/useCompanySettings';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 
 const Company = () => {
@@ -14,33 +15,90 @@ const Company = () => {
   const updateMutation = useUpdateCompanySettings();
   const { toast } = useToast();
   
-  const [projectName, setProjectName] = useState(settings?.project_name || '');
-  const [logoUrl, setLogoUrl] = useState(settings?.logo_url || '');
-  const [authBackgroundUrl, setAuthBackgroundUrl] = useState(settings?.auth_background_url || '');
+  const [projectName, setProjectName] = useState(settings?.project_name || 'SoporteTech');
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [authBackgroundFile, setAuthBackgroundFile] = useState<File | null>(null);
   const [primaryColor, setPrimaryColor] = useState(settings?.primary_color || '#059669');
   const [secondaryColor, setSecondaryColor] = useState(settings?.secondary_color || '#10b981');
+  const [uploading, setUploading] = useState(false);
 
   // Update local state when settings data loads
   useState(() => {
     if (settings) {
-      setProjectName(settings.project_name);
-      setLogoUrl(settings.logo_url || '');
-      setAuthBackgroundUrl(settings.auth_background_url || '');
-      setPrimaryColor(settings.primary_color);
-      setSecondaryColor(settings.secondary_color);
+      setProjectName(settings.project_name || 'SoporteTech');
+      setPrimaryColor(settings.primary_color || '#059669');
+      setSecondaryColor(settings.secondary_color || '#10b981');
     }
   });
 
-  const handleSave = async () => {
-    const updates = {
-      project_name: projectName,
-      logo_url: logoUrl || null,
-      auth_background_url: authBackgroundUrl || null,
-      primary_color: primaryColor,
-      secondary_color: secondaryColor,
-    };
+  const uploadFile = async (file: File, fileName: string): Promise<string | null> => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${fileName}.${fileExt}`;
 
-    await updateMutation.mutateAsync(updates);
+      const { error: uploadError } = await supabase.storage
+        .from('company-assets')
+        .upload(filePath, file, {
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('company-assets')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo subir el archivo",
+      });
+      return null;
+    }
+  };
+
+  const handleSave = async () => {
+    setUploading(true);
+    
+    try {
+      let logoUrl = settings?.logo_url;
+      let authBackgroundUrl = settings?.auth_background_url;
+
+      // Upload logo if selected
+      if (logoFile) {
+        const uploadedLogoUrl = await uploadFile(logoFile, 'logo');
+        if (uploadedLogoUrl) {
+          logoUrl = uploadedLogoUrl;
+        }
+      }
+
+      // Upload auth background if selected
+      if (authBackgroundFile) {
+        const uploadedBackgroundUrl = await uploadFile(authBackgroundFile, 'auth-background');
+        if (uploadedBackgroundUrl) {
+          authBackgroundUrl = uploadedBackgroundUrl;
+        }
+      }
+
+      const updates = {
+        project_name: projectName,
+        logo_url: logoUrl,
+        auth_background_url: authBackgroundUrl,
+        primary_color: primaryColor,
+        secondary_color: secondaryColor,
+      };
+
+      await updateMutation.mutateAsync(updates);
+      
+      // Reset file inputs
+      setLogoFile(null);
+      setAuthBackgroundFile(null);
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -91,41 +149,65 @@ const Company = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="logo-url">URL del Logo</Label>
+              <Label htmlFor="logo-file">Logo de la Empresa</Label>
               <div className="flex gap-2">
                 <Input
-                  id="logo-url"
-                  value={logoUrl}
-                  onChange={(e) => setLogoUrl(e.target.value)}
-                  placeholder="https://ejemplo.com/logo.png"
+                  id="logo-file"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                  className="flex-1"
                 />
-                <Button variant="outline" size="icon">
+                <Button variant="outline" size="icon" disabled>
                   <Upload className="h-4 w-4" />
                 </Button>
               </div>
-              {logoUrl && (
+              {settings?.logo_url && (
                 <div className="mt-2">
-                  <img src={logoUrl} alt="Logo preview" className="h-16 w-auto border rounded" />
+                  <img src={settings.logo_url} alt="Logo actual" className="h-16 w-auto border rounded" />
+                  <p className="text-sm text-muted-foreground mt-1">Logo actual</p>
+                </div>
+              )}
+              {logoFile && (
+                <div className="mt-2">
+                  <img 
+                    src={URL.createObjectURL(logoFile)} 
+                    alt="Vista previa del logo" 
+                    className="h-16 w-auto border rounded" 
+                  />
+                  <p className="text-sm text-muted-foreground mt-1">Vista previa del nuevo logo</p>
                 </div>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="auth-background">URL del Fondo de Autenticación</Label>
+              <Label htmlFor="auth-background-file">Fondo de Autenticación</Label>
               <div className="flex gap-2">
                 <Input
-                  id="auth-background"
-                  value={authBackgroundUrl}
-                  onChange={(e) => setAuthBackgroundUrl(e.target.value)}
-                  placeholder="https://ejemplo.com/fondo.jpg"
+                  id="auth-background-file"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setAuthBackgroundFile(e.target.files?.[0] || null)}
+                  className="flex-1"
                 />
-                <Button variant="outline" size="icon">
+                <Button variant="outline" size="icon" disabled>
                   <Upload className="h-4 w-4" />
                 </Button>
               </div>
-              {authBackgroundUrl && (
+              {settings?.auth_background_url && (
                 <div className="mt-2">
-                  <img src={authBackgroundUrl} alt="Background preview" className="h-24 w-auto border rounded" />
+                  <img src={settings.auth_background_url} alt="Fondo actual" className="h-24 w-auto border rounded" />
+                  <p className="text-sm text-muted-foreground mt-1">Fondo actual</p>
+                </div>
+              )}
+              {authBackgroundFile && (
+                <div className="mt-2">
+                  <img 
+                    src={URL.createObjectURL(authBackgroundFile)} 
+                    alt="Vista previa del fondo" 
+                    className="h-24 w-auto border rounded" 
+                  />
+                  <p className="text-sm text-muted-foreground mt-1">Vista previa del nuevo fondo</p>
                 </div>
               )}
             </div>
@@ -171,8 +253,8 @@ const Company = () => {
         </Card>
 
         <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={updateMutation.isPending}>
-            {updateMutation.isPending ? 'Guardando...' : 'Guardar Cambios'}
+          <Button onClick={handleSave} disabled={updateMutation.isPending || uploading}>
+            {updateMutation.isPending || uploading ? 'Guardando...' : 'Guardar Cambios'}
           </Button>
         </div>
       </div>

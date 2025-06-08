@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useCreateTicket } from '@/hooks/useTickets';
 import { useDepartments, useDepartmentCategories } from '@/hooks/useDepartments';
+import { useCategories } from '@/hooks/useCategories';
 import { useAuth } from '@/hooks/useAuth';
 
 const ticketSchema = z.object({
@@ -32,6 +33,7 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
   const { user } = useAuth();
   const createTicketMutation = useCreateTicket();
   const { data: departments } = useDepartments();
+  const { data: categories } = useCategories();
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>('');
   const { data: departmentCategories } = useDepartmentCategories(selectedDepartmentId);
 
@@ -54,7 +56,8 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
       description: data.description,
       priority: data.priority,
       department_id: data.department_id,
-      category_id: data.category_id || undefined,
+      // Use the first available category from ticket_categories if no department category is selected
+      category_id: data.category_id || (categories && categories.length > 0 ? categories[0].id : undefined),
       customer_id: user.id,
     };
 
@@ -141,7 +144,7 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
                 name="category_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Categoría</FormLabel>
+                    <FormLabel>Categoría del Departamento</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
@@ -150,6 +153,40 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
                       </FormControl>
                       <SelectContent>
                         {departmentCategories.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full" 
+                                style={{ backgroundColor: category.color }}
+                              />
+                              {category.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {/* Fallback to general categories if no department categories */}
+            {(!selectedDepartmentId || !departmentCategories || departmentCategories.length === 0) && categories && categories.length > 0 && (
+              <FormField
+                control={form.control}
+                name="category_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Categoría General</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Seleccione una categoría" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {categories.map((category) => (
                           <SelectItem key={category.id} value={category.id}>
                             <div className="flex items-center gap-2">
                               <div 

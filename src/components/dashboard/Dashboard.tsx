@@ -16,6 +16,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { useTickets } from '@/hooks/useTickets';
 import { useUsers } from '@/hooks/useUsers';
+import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { CreateTicketForm } from '@/components/forms/CreateTicketForm';
@@ -47,16 +48,19 @@ export function Dashboard() {
   const [showCreateTicket, setShowCreateTicket] = useState(false);
   const { data: tickets = [] } = useTickets();
   const { data: users = [] } = useUsers();
+  const { user, hasRole } = useAuth();
 
-  // Calculate stats from real data
-  const activeTickets = tickets.filter(t => ['abierto', 'en_progreso', 'pendiente'].includes(t.status));
-  const resolvedTickets = tickets.filter(t => t.status === 'resuelto');
-  const totalTickets = tickets.length;
-  const recentTickets = tickets.slice(0, 4);
+  // Filter tickets based on user role
+  const userTickets = hasRole(['user']) ? tickets.filter(t => t.customer_id === user?.id) : tickets;
+  
+  // Calculate stats from filtered data
+  const activeTickets = userTickets.filter(t => ['abierto', 'en_progreso', 'pendiente'].includes(t.status));
+  const resolvedTickets = userTickets.filter(t => t.status === 'resuelto');
+  const recentTickets = userTickets.slice(0, 4);
 
   // Calculate monthly ticket data
   const currentMonth = new Date().getMonth();
-  const monthlyTickets = tickets.filter(ticket => {
+  const monthlyTickets = userTickets.filter(ticket => {
     const ticketMonth = new Date(ticket.created_at).getMonth();
     return ticketMonth === currentMonth;
   });
@@ -88,7 +92,7 @@ export function Dashboard() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">
-            Resumen general del sistema de soporte técnico
+            {hasRole(['user']) ? 'Resumen de tus tickets y actividad' : 'Resumen general del sistema de soporte técnico'}
           </p>
         </div>
         <Button onClick={() => setShowCreateTicket(true)}>
@@ -100,21 +104,23 @@ export function Dashboard() {
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatsCard
-          title="Tickets Activos"
+          title={hasRole(['user']) ? "Mis Tickets Activos" : "Tickets Activos"}
           value={activeTickets.length.toString()}
-          description={`${tickets.filter(t => new Date(t.created_at).toDateString() === new Date().toDateString()).length} nuevos hoy`}
+          description={`${userTickets.filter(t => new Date(t.created_at).toDateString() === new Date().toDateString()).length} nuevos hoy`}
           icon={Ticket}
           trend={{ value: 8, isPositive: true }}
         />
+        {!hasRole(['user']) && (
+          <StatsCard
+            title="Total Usuarios"
+            value={users.length.toString()}
+            description="Usuarios registrados"
+            icon={Users}
+            trend={{ value: 15, isPositive: true }}
+          />
+        )}
         <StatsCard
-          title="Total Usuarios"
-          value={users.length.toString()}
-          description="Usuarios registrados"
-          icon={Users}
-          trend={{ value: 15, isPositive: true }}
-        />
-        <StatsCard
-          title="Tickets Resueltos"
+          title={hasRole(['user']) ? "Mis Tickets Resueltos" : "Tickets Resueltos"}
           value={resolvedTickets.length.toString()}
           description="Total resueltos"
           icon={CheckCircle}
@@ -133,7 +139,7 @@ export function Dashboard() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Tickets por Mes</CardTitle>
+            <CardTitle>{hasRole(['user']) ? 'Mis Tickets por Mes' : 'Tickets por Mes'}</CardTitle>
             <CardDescription>
               Comparación de tickets totales vs resueltos
             </CardDescription>
@@ -182,9 +188,9 @@ export function Dashboard() {
       {/* Recent Tickets */}
       <Card>
         <CardHeader>
-          <CardTitle>Tickets Recientes</CardTitle>
+          <CardTitle>{hasRole(['user']) ? 'Mis Tickets Recientes' : 'Tickets Recientes'}</CardTitle>
           <CardDescription>
-            Últimos tickets reportados en el sistema
+            {hasRole(['user']) ? 'Tus últimos tickets reportados' : 'Últimos tickets reportados en el sistema'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -206,9 +212,11 @@ export function Dashboard() {
                       </Badge>
                     </div>
                     <h4 className="font-medium mt-1">{ticket.title}</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Cliente: {ticket.profiles_customer?.full_name}
-                    </p>
+                    {!hasRole(['user']) && (
+                      <p className="text-sm text-muted-foreground">
+                        Cliente: {ticket.profiles_customer?.full_name}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -230,7 +238,7 @@ export function Dashboard() {
             ))}
           </div>
 
-          {tickets.length === 0 && (
+          {userTickets.length === 0 && (
             <div className="text-center py-8">
               <p className="text-muted-foreground">No hay tickets disponibles</p>
             </div>
