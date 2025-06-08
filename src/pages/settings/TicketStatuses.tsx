@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,7 +41,13 @@ const TicketStatuses = () => {
   });
 
   const onSubmit = async (data: StatusFormData) => {
-    await createStatusMutation.mutateAsync(data);
+    await createStatusMutation.mutateAsync({
+      name: data.name,
+      description: data.description,
+      color: data.color,
+      is_closed_status: data.is_closed_status,
+      sort_order: data.sort_order,
+    });
     form.reset();
     setShowForm(false);
   };

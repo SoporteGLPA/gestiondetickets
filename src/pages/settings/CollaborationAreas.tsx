@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -56,13 +55,19 @@ const CollaborationAreas = () => {
   });
 
   const onSubmitArea = async (data: AreaFormData) => {
-    await createAreaMutation.mutateAsync(data);
+    await createAreaMutation.mutateAsync({
+      name: data.name,
+      description: data.description,
+    });
     areaForm.reset();
     setShowAreaForm(false);
   };
 
   const onSubmitAssignment = async (data: AssignmentFormData) => {
-    await assignUserMutation.mutateAsync(data);
+    await assignUserMutation.mutateAsync({
+      user_id: data.user_id,
+      area_id: data.area_id,
+    });
     assignmentForm.reset();
     setShowAssignmentForm(false);
   };
