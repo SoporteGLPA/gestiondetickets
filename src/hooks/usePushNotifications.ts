@@ -64,16 +64,25 @@ export function usePushNotifications() {
         ),
       });
 
-      // Guardar la suscripción en la base de datos
-      const { error } = await supabase
-        .from('push_subscriptions')
-        .upsert({
-          user_id: user.id,
-          subscription: JSON.stringify(pushSubscription),
-          endpoint: pushSubscription.endpoint,
-        });
+      // Guardar la suscripción en la base de datos usando rpc para evitar problemas de tipos
+      const { error } = await supabase.rpc('save_push_subscription', {
+        p_user_id: user.id,
+        p_subscription: JSON.stringify(pushSubscription),
+        p_endpoint: pushSubscription.endpoint,
+      });
 
-      if (error) throw error;
+      if (error) {
+        // Si el RPC no existe, usar insert directo (esto se actualizará cuando los tipos se regeneren)
+        const { error: insertError } = await (supabase as any)
+          .from('push_subscriptions')
+          .upsert({
+            user_id: user.id,
+            subscription: JSON.stringify(pushSubscription),
+            endpoint: pushSubscription.endpoint,
+          });
+        
+        if (insertError) throw insertError;
+      }
 
       setSubscription(pushSubscription);
       setIsSubscribed(true);
@@ -102,7 +111,7 @@ export function usePushNotifications() {
       await subscription.unsubscribe();
       
       // Eliminar la suscripción de la base de datos
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('push_subscriptions')
         .delete()
         .eq('user_id', user.id);
