@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,10 +23,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Plus, Edit, Trash2 } from 'lucide-react';
-import { useUsers, useCreateUser, useUpdateUser, useDeleteUser } from '@/hooks/useUsers';
+import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, type User } from '@/hooks/useUsers';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { UserImportExport } from '@/components/users/UserImportExport';
+import type { Database } from '@/integrations/supabase/types';
+
+type UserRole = Database['public']['Enums']['user_role'];
 
 const Users = () => {
   const { data: users, isLoading, isError } = useUsers();
@@ -37,11 +41,11 @@ const Users = () => {
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('user');
+  const [role, setRole] = useState<UserRole>('user');
 
   useEffect(() => {
     if (selectedUser) {
@@ -54,7 +58,13 @@ const Users = () => {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await createUserMutation.mutateAsync({ full_name: name, email, password, role });
+      await createUserMutation.mutateAsync({ 
+        full_name: name, 
+        email, 
+        password, 
+        role,
+        is_active: true
+      });
       toast({
         title: "Usuario creado",
         description: "El usuario ha sido creado exitosamente",
@@ -77,7 +87,12 @@ const Users = () => {
     e.preventDefault();
     if (!selectedUser) return;
     try {
-      await updateUserMutation.mutateAsync({ id: selectedUser.id, full_name: name, email, role });
+      await updateUserMutation.mutateAsync({ 
+        id: selectedUser.id, 
+        full_name: name, 
+        email, 
+        role 
+      });
       toast({
         title: "Usuario actualizado",
         description: "El usuario ha sido actualizado exitosamente",
@@ -228,7 +243,12 @@ const Users = () => {
               <Label htmlFor="role" className="text-right">
                 Rol
               </Label>
-              <select id="role" value={role} onChange={(e) => setRole(e.target.value)} className="col-span-3 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+              <select 
+                id="role" 
+                value={role} 
+                onChange={(e) => setRole(e.target.value as UserRole)} 
+                className="col-span-3 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+              >
                 <option value="user">Usuario</option>
                 <option value="agent">Agente</option>
                 <option value="admin">Administrador</option>
@@ -265,7 +285,12 @@ const Users = () => {
               <Label htmlFor="role" className="text-right">
                 Rol
               </Label>
-              <select id="role" value={role} onChange={(e) => setRole(e.target.value)} className="col-span-3 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+              <select 
+                id="role" 
+                value={role} 
+                onChange={(e) => setRole(e.target.value as UserRole)} 
+                className="col-span-3 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+              >
                 <option value="user">Usuario</option>
                 <option value="agent">Agente</option>
                 <option value="admin">Administrador</option>

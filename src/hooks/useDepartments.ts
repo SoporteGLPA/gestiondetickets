@@ -126,6 +126,37 @@ export function useUpdateDepartment() {
   });
 }
 
+export function useDeleteDepartment() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (departmentId: string) => {
+      const { error } = await supabase
+        .from('departments')
+        .update({ is_active: false })
+        .eq('id', departmentId);
+
+      if (error) throw error;
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['departments'] });
+      toast({
+        title: "Departamento eliminado",
+        description: "El departamento ha sido eliminado exitosamente",
+      });
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo eliminar el departamento",
+      });
+    },
+  });
+}
+
 export function useCreateDepartmentCategory() {
   const queryClient = useQueryClient();
   const { toast } = useToast();

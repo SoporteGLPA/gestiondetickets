@@ -106,3 +106,82 @@ export function useCreateUser() {
     },
   });
 }
+
+export function useUpdateUser() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (userData: {
+      id: string;
+      full_name: string;
+      email: string;
+      role: UserRole;
+      department?: string;
+      is_active?: boolean;
+    }) => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: userData.full_name,
+          email: userData.email,
+          role: userData.role,
+          department: userData.department,
+          is_active: userData.is_active,
+        })
+        .eq('id', userData.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast({
+        title: "Usuario actualizado",
+        description: "El usuario ha sido actualizado exitosamente",
+      });
+    },
+    onError: (error) => {
+      console.error('Error updating user:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo actualizar el usuario",
+      });
+    },
+  });
+}
+
+export function useDeleteUser() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_active: false })
+        .eq('id', userId);
+
+      if (error) throw error;
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast({
+        title: "Usuario desactivado",
+        description: "El usuario ha sido desactivado exitosamente",
+      });
+    },
+    onError: (error) => {
+      console.error('Error deactivating user:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo desactivar el usuario",
+      });
+    },
+  });
+}
