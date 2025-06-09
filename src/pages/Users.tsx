@@ -6,9 +6,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Plus, Mail, Shield, User, Building, Trash } from 'lucide-react';
+import { Plus, Mail, Shield, Building, Trash } from 'lucide-react';
 import { CreateUserForm } from '@/components/forms/CreateUserForm';
 import { EditUserForm } from '@/components/forms/EditUserForm';
+import { UserImportExport } from '@/components/users/UserImportExport';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -97,13 +98,16 @@ const Users = () => {
           </p>
         </div>
         {hasRole(['admin']) && (
-          <Button 
-            onClick={() => setShowCreateForm(true)}
-            className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Nuevo Usuario
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <UserImportExport />
+            <Button 
+              onClick={() => setShowCreateForm(true)}
+              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Nuevo Usuario
+            </Button>
+          </div>
         )}
       </div>
 

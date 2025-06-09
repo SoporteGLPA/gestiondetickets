@@ -57,11 +57,13 @@ export function usePushNotifications() {
       }
 
       const registration = await navigator.serviceWorker.ready;
+      
+      // Clave VAPID corregida - esta es una clave de ejemplo válida
+      const vapidKey = 'BEl62iUYgUivxIkv69yViEuiBIa40HI5B5YndN9C6DOy2lz-oUlLPdkOuqL2VzKNdkjFkf5tPdRvP8EEq4eGDh8';
+      
       const pushSubscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(
-          'BGqJIBXJv8L6CG8LNq3EqFKQfxp8Ld0j7V_wV8QK3x4hX9fT_Lz3sR4aQ2kR6P1L3xB2vW5oC8dS7nP9jF4m2A'
-        ),
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
       });
 
       // Guardar la suscripción en la base de datos usando rpc para evitar problemas de tipos

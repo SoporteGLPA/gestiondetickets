@@ -1,298 +1,295 @@
 
 import { useState } from 'react';
+import { useDepartments, useCreateDepartment, useUpdateDepartment } from '@/hooks/useDepartments';
+import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Plus, ArrowRight, Building, Tag } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Plus, Building, Edit, Trash } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useDepartments, useCreateDepartment, useDepartmentCategories, useCreateDepartmentCategory } from '@/hooks/useDepartments';
-import { Link } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import type { Department } from '@/hooks/useDepartments';
 
 const departmentSchema = z.object({
   name: z.string().min(1, 'El nombre es requerido'),
   description: z.string().optional(),
 });
 
-const categorySchema = z.object({
-  name: z.string().min(1, 'El nombre es requerido'),
-  description: z.string().optional(),
-  color: z.string().min(1, 'El color es requerido'),
-});
-
 type DepartmentFormData = z.infer<typeof departmentSchema>;
-type CategoryFormData = z.infer<typeof categorySchema>;
 
 const Departments = () => {
-  const [showDepartmentForm, setShowDepartmentForm] = useState(false);
-  const [showCategoryForm, setShowCategoryForm] = useState(false);
-  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>('');
-  const [selectedDepartmentName, setSelectedDepartmentName] = useState<string>('');
-
-  const { data: departments } = useDepartments();
-  const { data: categories } = useDepartmentCategories(selectedDepartmentId);
+  const { hasRole } = useAuth();
+  const { data: departments, isLoading } = useDepartments();
   const createDepartmentMutation = useCreateDepartment();
-  const createCategoryMutation = useCreateDepartmentCategory();
+  const updateDepartmentMutation = useUpdateDepartment();
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
-  const departmentForm = useForm<DepartmentFormData>({
+  const createForm = useForm<DepartmentFormData>({
     resolver: zodResolver(departmentSchema),
-    defaultValues: { name: '', description: '' },
+    defaultValues: {
+      name: '',
+      description: '',
+    },
   });
 
-  const categoryForm = useForm<CategoryFormData>({
-    resolver: zodResolver(categorySchema),
-    defaultValues: { name: '', description: '', color: '#6366f1' },
+  const editForm = useForm<DepartmentFormData>({
+    resolver: zodResolver(departmentSchema),
   });
 
-  const onSubmitDepartment = async (data: DepartmentFormData) => {
-    const submitData = {
-      name: data.name,
-      description: data.description,
-    };
-    await createDepartmentMutation.mutateAsync(submitData);
-    departmentForm.reset();
-    setShowDepartmentForm(false);
+  const deleteDepartmentMutation = useMutation({
+    mutationFn: async (departmentId: string) => {
+      const { error } = await supabase
+        .from('departments')
+        .update({ is_active: false })
+        .eq('id', departmentId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['departments'] });
+      toast({
+        title: "Departamento eliminado",
+        description: "El departamento ha sido desactivado exitosamente",
+      });
+    },
+    onError: () => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo eliminar el departamento",
+      });
+    },
+  });
+
+  const onCreateSubmit = async (data: DepartmentFormData) => {
+    await createDepartmentMutation.mutateAsync(data);
+    createForm.reset();
+    setShowCreateForm(false);
   };
 
-  const onSubmitCategory = async (data: CategoryFormData) => {
-    const submitData = {
-      name: data.name,
-      description: data.description,
-      color: data.color,
-      department_id: selectedDepartmentId,
-    };
-    await createCategoryMutation.mutateAsync(submitData);
-    categoryForm.reset();
-    setShowCategoryForm(false);
+  const onEditSubmit = async (data: DepartmentFormData) => {
+    if (!selectedDepartment) return;
+    await updateDepartmentMutation.mutateAsync({ id: selectedDepartment.id, ...data });
+    editForm.reset();
+    setShowEditForm(false);
+    setSelectedDepartment(null);
   };
 
-  const handleDepartmentClick = (departmentId: string, departmentName: string) => {
-    setSelectedDepartmentId(departmentId);
-    setSelectedDepartmentName(departmentName);
+  const handleEdit = (department: Department) => {
+    setSelectedDepartment(department);
+    editForm.reset({
+      name: department.name,
+      description: department.description || '',
+    });
+    setShowEditForm(true);
   };
+
+  const handleDelete = async (department: Department) => {
+    if (confirm(`¿Estás seguro de que deseas eliminar el departamento "${department.name}"?`)) {
+      await deleteDepartmentMutation.mutateAsync(department.id);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-600"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6 p-2 md:p-0">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-emerald-800">
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            <Building className="h-8 w-8 text-emerald-600" />
             Departamentos
           </h1>
-          <p className="text-muted-foreground text-sm md:text-base">
-            Gestiona los departamentos y sus categorías
+          <p className="text-muted-foreground">
+            Gestiona los departamentos de tu organización
           </p>
         </div>
-        <Link to="/settings">
-          <Button variant="outline">Volver a Configuración</Button>
-        </Link>
+        {hasRole(['admin', 'agent']) && (
+          <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
+            <DialogTrigger asChild>
+              <Button className="bg-emerald-600 hover:bg-emerald-700">
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Departamento
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Crear Nuevo Departamento</DialogTitle>
+              </DialogHeader>
+              <Form {...createForm}>
+                <form onSubmit={createForm.handleSubmit(onCreateSubmit)} className="space-y-4">
+                  <FormField
+                    control={createForm.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Nombre</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nombre del departamento" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={createForm.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Descripción</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Descripción del departamento" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="flex justify-end space-x-2">
+                    <Button type="button" variant="outline" onClick={() => setShowCreateForm(false)}>
+                      Cancelar
+                    </Button>
+                    <Button type="submit" disabled={createDepartmentMutation.isPending}>
+                      {createDepartmentMutation.isPending ? 'Creando...' : 'Crear'}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Departamentos */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Building className="h-5 w-5" />
-                Departamentos
-              </CardTitle>
-              <Dialog open={showDepartmentForm} onOpenChange={setShowDepartmentForm}>
-                <DialogTrigger asChild>
-                  <Button size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Nuevo
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Crear Departamento</DialogTitle>
-                  </DialogHeader>
-                  <Form {...departmentForm}>
-                    <form onSubmit={departmentForm.handleSubmit(onSubmitDepartment)} className="space-y-4">
-                      <FormField
-                        control={departmentForm.control}
-                        name="name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Nombre</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Nombre del departamento" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={departmentForm.control}
-                        name="description"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Descripción</FormLabel>
-                            <FormControl>
-                              <Textarea placeholder="Descripción del departamento" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <div className="flex justify-end space-x-2">
-                        <Button type="button" variant="outline" onClick={() => setShowDepartmentForm(false)}>
-                          Cancelar
-                        </Button>
-                        <Button type="submit" disabled={createDepartmentMutation.isPending}>
-                          {createDepartmentMutation.isPending ? 'Creando...' : 'Crear'}
-                        </Button>
-                      </div>
-                    </form>
-                  </Form>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {departments?.map((department) => (
-              <div
-                key={department.id}
-                className={`p-3 border rounded-lg cursor-pointer transition-colors hover:bg-gray-50 ${
-                  selectedDepartmentId === department.id ? 'border-emerald-500 bg-emerald-50' : ''
-                }`}
-                onClick={() => handleDepartmentClick(department.id, department.name)}
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium">{department.name}</h3>
-                    {department.description && (
-                      <p className="text-sm text-muted-foreground">{department.description}</p>
-                    )}
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+      <div className="grid gap-4">
+        {departments?.map((department) => (
+          <Card key={department.id}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building className="h-5 w-5 text-emerald-600" />
+                    {department.name}
+                  </CardTitle>
+                  {department.description && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {department.description}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant={department.is_active ? 'default' : 'secondary'}>
+                    {department.is_active ? 'Activo' : 'Inactivo'}
+                  </Badge>
+                  {hasRole(['admin', 'agent']) && (
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(department)}
+                        className="border-emerald-600 text-emerald-600 hover:bg-emerald-50"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDelete(department)}
+                        disabled={deleteDepartmentMutation.isPending}
+                        className="border-red-600 text-red-600 hover:bg-red-50"
+                      >
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
-            ))}
-          </CardContent>
-        </Card>
+            </CardHeader>
+          </Card>
+        ))}
+      </div>
 
-        {/* Categorías */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Tag className="h-5 w-5" />
-                Categorías
-                {selectedDepartmentName && (
-                  <span className="text-sm text-muted-foreground">- {selectedDepartmentName}</span>
+      {/* Edit Dialog */}
+      <Dialog open={showEditForm} onOpenChange={setShowEditForm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Departamento</DialogTitle>
+          </DialogHeader>
+          <Form {...editForm}>
+            <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+              <FormField
+                control={editForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nombre</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Nombre del departamento" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </CardTitle>
-              {selectedDepartmentId && (
-                <Dialog open={showCategoryForm} onOpenChange={setShowCategoryForm}>
-                  <DialogTrigger asChild>
-                    <Button size="sm">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Nueva
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Crear Categoría</DialogTitle>
-                    </DialogHeader>
-                    <Form {...categoryForm}>
-                      <form onSubmit={categoryForm.handleSubmit(onSubmitCategory)} className="space-y-4">
-                        <FormField
-                          control={categoryForm.control}
-                          name="name"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Nombre</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Nombre de la categoría" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={categoryForm.control}
-                          name="description"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Descripción</FormLabel>
-                              <FormControl>
-                                <Textarea placeholder="Descripción de la categoría" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={categoryForm.control}
-                          name="color"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Color</FormLabel>
-                              <FormControl>
-                                <div className="flex items-center gap-2">
-                                  <input
-                                    type="color"
-                                    className="w-12 h-10 border rounded cursor-pointer"
-                                    {...field}
-                                  />
-                                  <Input placeholder="#6366f1" {...field} />
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <div className="flex justify-end space-x-2">
-                          <Button type="button" variant="outline" onClick={() => setShowCategoryForm(false)}>
-                            Cancelar
-                          </Button>
-                          <Button type="submit" disabled={createCategoryMutation.isPending}>
-                            {createCategoryMutation.isPending ? 'Creando...' : 'Crear'}
-                          </Button>
-                        </div>
-                      </form>
-                    </Form>
-                  </DialogContent>
-                </Dialog>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {!selectedDepartmentId ? (
-              <p className="text-center text-muted-foreground py-8">
-                Selecciona un departamento para ver sus categorías
-              </p>
-            ) : categories?.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
-                No hay categorías en este departamento
-              </p>
-            ) : (
-              categories?.map((category) => (
-                <div key={category.id} className="p-3 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-4 h-4 rounded-full"
-                      style={{ backgroundColor: category.color }}
-                    />
-                    <div>
-                      <h3 className="font-medium">{category.name}</h3>
-                      {category.description && (
-                        <p className="text-sm text-muted-foreground">{category.description}</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))
+              />
+              <FormField
+                control={editForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Descripción</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Descripción del departamento" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end space-x-2">
+                <Button type="button" variant="outline" onClick={() => setShowEditForm(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={updateDepartmentMutation.isPending} className="bg-emerald-600 hover:bg-emerald-700">
+                  {updateDepartmentMutation.isPending ? 'Actualizando...' : 'Actualizar'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {departments?.length === 0 && (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Building className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No hay departamentos</h3>
+            <p className="text-muted-foreground mb-4 text-center">
+              Crea el primer departamento para comenzar a organizar tu empresa
+            </p>
+            {hasRole(['admin', 'agent']) && (
+              <Button onClick={() => setShowCreateForm(true)} className="bg-emerald-600 hover:bg-emerald-700">
+                <Plus className="mr-2 h-4 w-4" />
+                Crear Departamento
+              </Button>
             )}
           </CardContent>
         </Card>
-      </div>
+      )}
     </div>
   );
 };

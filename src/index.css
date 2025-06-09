@@ -14,7 +14,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 214 78% 51%;
+    --primary: 158 64% 52%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -31,7 +31,7 @@
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 214 78% 51%;
+    --ring: 158 64% 52%;
 
     --radius: 0.5rem;
 
@@ -39,14 +39,14 @@
     --warning: 38 92% 50%;
     --info: 199 89% 48%;
 
-    --sidebar-background: 222.2 84% 4.9%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 214 78% 51%;
+    --sidebar-background: 156 39% 15%;
+    --sidebar-foreground: 158 64% 95%;
+    --sidebar-primary: 158 64% 52%;
     --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 217.2 32.6% 17.5%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217.2 32.6% 17.5%;
-    --sidebar-ring: 214 78% 51%;
+    --sidebar-accent: 156 39% 25%;
+    --sidebar-accent-foreground: 158 64% 95%;
+    --sidebar-border: 156 39% 25%;
+    --sidebar-ring: 158 64% 52%;
   }
 
   .dark {
@@ -59,7 +59,7 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 214 78% 51%;
+    --primary: 158 64% 52%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 217.2 32.6% 17.5%;
@@ -76,20 +76,20 @@
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 214 78% 51%;
+    --ring: 158 64% 52%;
 
     --success: 142 71% 45%;
     --warning: 38 92% 50%;
     --info: 199 89% 48%;
 
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 214 78% 51%;
+    --sidebar-background: 156 39% 10%;
+    --sidebar-foreground: 158 64% 95%;
+    --sidebar-primary: 158 64% 52%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 214 78% 51%;
+    --sidebar-accent: 156 39% 20%;
+    --sidebar-accent-foreground: 158 64% 95%;
+    --sidebar-border: 156 39% 20%;
+    --sidebar-ring: 158 64% 52%;
   }
 }
 
@@ -120,12 +120,12 @@
 }
 
 /* Gradientes para gráficos */
-.gradient-blue {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+.gradient-emerald {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
 }
 
 .gradient-green {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
 }
 
 .gradient-yellow {
