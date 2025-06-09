@@ -135,3 +135,22 @@
 .gradient-red {
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
 }
+
+/* Estilos específicos para títulos en negro */
+.section-title-black {
+  color: #000000 !important;
+}
+
+/* Estilos específicos que contienen el texto que debe ser negro */
+[data-title*="Tickets de Soporte"] h1,
+[data-title*="Gestión de usuarios"] h1,
+[data-title*="configuración de empresa"] h1,
+[data-title*="estados de tickets"] h1,
+[data-title*="área de colaboradores"] h1,
+h1:has-text("Tickets de Soporte"),
+h1:has-text("Gestión de usuarios"),
+h1:has-text("configuración de empresa"),
+h1:has-text("estados de tickets"),
+h1:has-text("área de colaboradores") {
+  color: #000000 !important;
+}

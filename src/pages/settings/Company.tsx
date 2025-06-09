@@ -105,7 +105,7 @@ const Company = () => {
     <div className="space-y-6 p-2 md:p-0">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-emerald-800">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight section-title-black">
             Configuración de Empresa
           </h1>
           <p className="text-muted-foreground text-sm md:text-base">

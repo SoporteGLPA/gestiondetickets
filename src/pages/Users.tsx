@@ -1,211 +1,280 @@
-
-import { useState } from 'react';
-import { useUsers } from '@/hooks/useUsers';
-import { useAuth } from '@/hooks/useAuth';
-import { Card, CardContent } from '@/components/ui/card';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Plus, Mail, Shield, Building, Trash } from 'lucide-react';
-import { CreateUserForm } from '@/components/forms/CreateUserForm';
-import { EditUserForm } from '@/components/forms/EditUserForm';
-import { UserImportExport } from '@/components/users/UserImportExport';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Plus, Edit, Trash2 } from 'lucide-react';
+import { useUsers, useCreateUser, useUpdateUser, useDeleteUser } from '@/hooks/useUsers';
 import { useToast } from '@/hooks/use-toast';
-import { User as UserType } from '@/hooks/useUsers';
+import { useAuth } from '@/hooks/useAuth';
+import { UserImportExport } from '@/components/users/UserImportExport';
 
 const Users = () => {
-  const { hasRole } = useAuth();
-  const { data: users, isLoading } = useUsers();
+  const { data: users, isLoading, isError } = useUsers();
+  const createUserMutation = useCreateUser();
+  const updateUserMutation = useUpdateUser();
+  const deleteUserMutation = useDeleteUser();
+  const { toast } = useToast();
+  const { profile } = useAuth();
+
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState('user');
 
-  const deleteUserMutation = useMutation({
-    mutationFn: async (userId: string) => {
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', userId);
+  useEffect(() => {
+    if (selectedUser) {
+      setName(selectedUser.full_name || '');
+      setEmail(selectedUser.email || '');
+      setRole(selectedUser.role || 'user');
+    }
+  }, [selectedUser]);
 
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await createUserMutation.mutateAsync({ full_name: name, email, password, role });
+      toast({
+        title: "Usuario creado",
+        description: "El usuario ha sido creado exitosamente",
+      });
+      setShowCreateForm(false);
+      setName('');
+      setEmail('');
+      setPassword('');
+      setRole('user');
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "No se pudo crear el usuario",
+      });
+    }
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+    try {
+      await updateUserMutation.mutateAsync({ id: selectedUser.id, full_name: name, email, role });
+      toast({
+        title: "Usuario actualizado",
+        description: "El usuario ha sido actualizado exitosamente",
+      });
+      setShowEditForm(false);
+      setSelectedUser(null);
+      setName('');
+      setEmail('');
+      setRole('user');
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "No se pudo actualizar el usuario",
+      });
+    }
+  };
+
+  const handleDeleteUser = async (id: string) => {
+    try {
+      await deleteUserMutation.mutateAsync(id);
       toast({
         title: "Usuario eliminado",
         description: "El usuario ha sido eliminado exitosamente",
       });
-    },
-    onError: (error) => {
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo eliminar el usuario",
+        description: error.message || "No se pudo eliminar el usuario",
       });
-    },
-  });
-
-  const handleEdit = (user: UserType) => {
-    setSelectedUser(user);
-    setShowEditForm(true);
-  };
-
-  const handleDelete = async (user: UserType) => {
-    if (confirm(`¿Estás seguro de que deseas eliminar al usuario ${user.full_name}?`)) {
-      await deleteUserMutation.mutateAsync(user.id);
-    }
-  };
-
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'admin': return 'default';
-      case 'agent': return 'secondary';
-      case 'user': return 'outline';
-      default: return 'outline';
-    }
-  };
-
-  const getRoleLabel = (role: string) => {
-    switch (role) {
-      case 'admin': return 'Administrador';
-      case 'agent': return 'Agente';
-      case 'user': return 'Usuario';
-      default: return role;
     }
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-600"></div>
-      </div>
-    );
+    return <div>Cargando usuarios...</div>;
+  }
+
+  if (isError) {
+    return <div>Error al cargar los usuarios.</div>;
   }
 
   return (
-    <div className="space-y-4 md:space-y-6 p-2 md:p-0">
+    <div className="space-y-6 p-2 md:p-0">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-emerald-800">
-            Gestión de Usuarios
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight section-title-black">
+            Gestión de usuarios
           </h1>
           <p className="text-muted-foreground text-sm md:text-base">
-            Administra usuarios, roles y permisos del sistema
+            Administra los usuarios del sistema
           </p>
         </div>
-        {hasRole(['admin']) && (
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <UserImportExport />
-            <Button 
-              onClick={() => setShowCreateForm(true)}
-              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo Usuario
+        <div className="flex flex-col sm:flex-row gap-2">
+          <UserImportExport />
+          {(profile?.role === 'admin' || profile?.role === 'agent') && (
+            <Button onClick={() => setShowCreateForm(true)}>
+              Crear Usuario
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
-      <div className="grid gap-3 md:gap-4">
-        {users?.map((user) => (
-          <Card key={user.id}>
-            <CardContent className="p-4 md:p-6">
-              <div className="flex flex-col space-y-3 md:space-y-0 md:flex-row md:items-center md:justify-between">
-                <div className="flex items-center space-x-3 md:space-x-4 flex-1">
-                  <Avatar className="h-10 w-10 md:h-12 md:w-12 flex-shrink-0">
-                    <AvatarFallback>
-                      {user.full_name.split(' ').map(n => n[0]).join('')}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="space-y-1 flex-1 min-w-0">
-                    <h3 className="font-semibold text-sm md:text-base truncate">{user.full_name}</h3>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs md:text-sm text-muted-foreground">
-                      <div className="flex items-center space-x-1">
-                        <Mail className="h-3 w-3 flex-shrink-0" />
-                        <span className="truncate">{user.email}</span>
-                      </div>
-                      {user.department && (
-                        <div className="flex items-center space-x-1">
-                          <Building className="h-3 w-3 flex-shrink-0" />
-                          <span className="truncate">{user.department}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4">
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant={getRoleColor(user.role)} className="text-xs">
-                      <Shield className="h-3 w-3 mr-1" />
-                      {getRoleLabel(user.role)}
-                    </Badge>
-                    <Badge variant={user.is_active ? 'default' : 'secondary'} className="text-xs">
-                      {user.is_active ? 'Activo' : 'Inactivo'}
-                    </Badge>
-                  </div>
-                  {hasRole(['admin']) && (
-                    <div className="flex gap-2 w-full sm:w-auto">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleEdit(user)}
-                        className="flex-1 sm:flex-none border-emerald-600 text-emerald-600 hover:bg-emerald-50 text-xs"
-                      >
-                        Editar
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleDelete(user)}
-                        disabled={deleteUserMutation.isPending}
-                        className="border-red-600 text-red-600 hover:bg-red-50"
-                      >
-                        <Trash className="h-3 w-3" />
-                      </Button>
-                    </div>
+      <Table>
+        <TableCaption>Lista de usuarios registrados en el sistema.</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[100px]">ID</TableHead>
+            <TableHead>Nombre</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Rol</TableHead>
+            <TableHead className="text-right">Acciones</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {users?.map((user) => (
+            <TableRow key={user.id}>
+              <TableCell className="font-medium">{user.id}</TableCell>
+              <TableCell>{user.full_name}</TableCell>
+              <TableCell>{user.email}</TableCell>
+              <TableCell>{user.role}</TableCell>
+              <TableCell className="text-right">
+                <div className="flex justify-end gap-2">
+                  {(profile?.role === 'admin' || profile?.role === 'agent') && (
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      onClick={() => {
+                        setSelectedUser(user);
+                        setShowEditForm(true);
+                      }}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {(profile?.role === 'admin' || profile?.role === 'agent') && (
+                    <Button 
+                      variant="destructive" 
+                      size="icon" 
+                      onClick={() => handleDeleteUser(user.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   )}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+        <TableFooter>
+          <TableRow>
+            <TableCell colSpan={5} className="text-center">
+              Total de usuarios: {users?.length}
+            </TableCell>
+          </TableRow>
+        </TableFooter>
+      </Table>
 
-      {users?.length === 0 && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-8 md:py-12 px-4">
-            <h3 className="text-base md:text-lg font-semibold mb-2">No hay usuarios</h3>
-            <p className="text-muted-foreground mb-4 text-center text-sm md:text-base">
-              Crea el primer usuario para comenzar
-            </p>
-            {hasRole(['admin']) && (
-              <Button 
-                onClick={() => setShowCreateForm(true)}
-                className="bg-emerald-600 hover:bg-emerald-700"
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Crear Usuario
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      {/* Create User Form */}
+      <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Crear Usuario</DialogTitle>
+            <DialogDescription>
+              Crea un nuevo usuario para el sistema.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Nombre
+              </Label>
+              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="email" className="text-right">
+                Email
+              </Label>
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="password" className="text-right">
+                Contraseña
+              </Label>
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="role" className="text-right">
+                Rol
+              </Label>
+              <select id="role" value={role} onChange={(e) => setRole(e.target.value)} className="col-span-3 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+                <option value="user">Usuario</option>
+                <option value="agent">Agente</option>
+                <option value="admin">Administrador</option>
+              </select>
+            </div>
+          </div>
+          <Button onClick={handleCreateUser}>Crear Usuario</Button>
+        </DialogContent>
+      </Dialog>
 
-      <CreateUserForm 
-        open={showCreateForm} 
-        onOpenChange={setShowCreateForm} 
-      />
-
-      <EditUserForm 
-        open={showEditForm} 
-        onOpenChange={setShowEditForm}
-        user={selectedUser}
-      />
+      {/* Edit User Form */}
+      <Dialog open={showEditForm} onOpenChange={setShowEditForm}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Editar Usuario</DialogTitle>
+            <DialogDescription>
+              Edita la información del usuario.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Nombre
+              </Label>
+              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="email" className="text-right">
+                Email
+              </Label>
+              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="col-span-3" />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="role" className="text-right">
+                Rol
+              </Label>
+              <select id="role" value={role} onChange={(e) => setRole(e.target.value)} className="col-span-3 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+                <option value="user">Usuario</option>
+                <option value="agent">Agente</option>
+                <option value="admin">Administrador</option>
+              </select>
+            </div>
+          </div>
+          <Button onClick={handleUpdateUser}>Actualizar Usuario</Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

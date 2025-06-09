@@ -6,9 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 
 export function AuthPage() {
   const { signIn, user, loading } = useAuth();
+  const { data: companySettings } = useCompanySettings();
   const [isLoading, setIsLoading] = useState(false);
 
   // Redirect if already authenticated
@@ -36,16 +38,29 @@ export function AuthPage() {
     );
   }
 
+  const projectName = companySettings?.project_name || 'SoporteTech';
+  const logoUrl = companySettings?.logo_url;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-xl border-emerald-200">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center mb-4">
-            <div className="w-20 h-20 bg-emerald-600 rounded-full flex items-center justify-center">
-              <span className="text-2xl font-bold text-white">ST</span>
-            </div>
+            {logoUrl ? (
+              <img 
+                src={logoUrl} 
+                alt={`${projectName} Logo`} 
+                className="w-20 h-20 rounded-full object-cover border-2 border-emerald-600"
+              />
+            ) : (
+              <div className="w-20 h-20 bg-emerald-600 rounded-full flex items-center justify-center">
+                <span className="text-2xl font-bold text-white">
+                  {projectName.substring(0, 2).toUpperCase()}
+                </span>
+              </div>
+            )}
           </div>
-          <CardTitle className="text-2xl font-bold text-emerald-800">SoporteTech</CardTitle>
+          <CardTitle className="text-2xl font-bold text-emerald-800">{projectName}</CardTitle>
           <CardDescription className="text-emerald-600">
             Sistema de Gestión de Tickets y Soporte
           </CardDescription>
@@ -75,7 +90,7 @@ export function AuthPage() {
             </div>
             <Button 
               type="submit" 
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white" 
+              className="w-full bg-[#173529] hover:bg-[#173529]/90 text-white border border-black" 
               disabled={isLoading}
             >
               {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}

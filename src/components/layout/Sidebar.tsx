@@ -2,19 +2,17 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/hooks/useAuth';
 import { useSidebarState } from '@/hooks/useSidebarState';
+import { useCompanySettings } from '@/hooks/useCompanySettings';
 import { 
   LayoutDashboard, 
   Ticket, 
   BookOpen, 
   Users, 
   Settings, 
-  BarChart3,
-  Menu,
-  X
+  BarChart3
 } from 'lucide-react';
 
 const navigation = [
@@ -35,6 +33,7 @@ export function Sidebar({ className, onToggle }: SidebarProps) {
   const { isExpanded, isMobile, handleMouseEnter, handleMouseLeave, toggleSidebar } = useSidebarState();
   const location = useLocation();
   const { profile } = useAuth();
+  const { data: companySettings } = useCompanySettings();
 
   useEffect(() => {
     onToggle?.(isExpanded);
@@ -43,6 +42,9 @@ export function Sidebar({ className, onToggle }: SidebarProps) {
   const filteredNavigation = navigation.filter(item => 
     profile?.role ? item.roles.includes(profile.role) : false
   );
+
+  const projectName = companySettings?.project_name || 'SoporteTech';
+  const logoUrl = companySettings?.logo_url;
 
   // Navegación móvil en la parte inferior
   if (isMobile) {
@@ -95,33 +97,39 @@ export function Sidebar({ className, onToggle }: SidebarProps) {
         onMouseLeave={handleMouseLeave}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
+        <div className="flex items-center justify-center p-4 border-b border-sidebar-border">
           {isExpanded ? (
-            <>
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              {logoUrl ? (
                 <img 
-                  src="/logo.jpg" 
-                  alt="SoporteTech Logo" 
+                  src={logoUrl} 
+                  alt={`${projectName} Logo`} 
                   className="w-8 h-8 rounded-lg object-cover"
                 />
-                <h1 className="text-xl font-bold text-sidebar-primary">SoporteTech</h1>
-              </div>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={toggleSidebar}
-                className="p-1 h-8 w-8"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </>
+              ) : (
+                <div className="w-8 h-8 bg-sidebar-primary rounded-lg flex items-center justify-center">
+                  <span className="text-sm font-bold text-sidebar-primary-foreground">
+                    {projectName.substring(0, 2).toUpperCase()}
+                  </span>
+                </div>
+              )}
+              <h1 className="text-xl font-bold text-sidebar-primary">{projectName}</h1>
+            </div>
           ) : (
             <div className="flex justify-center w-full">
-              <img 
-                src="/logo.jpg" 
-                alt="SoporteTech Logo" 
-                className="w-8 h-8 rounded-lg object-cover"
-              />
+              {logoUrl ? (
+                <img 
+                  src={logoUrl} 
+                  alt={`${projectName} Logo`} 
+                  className="w-8 h-8 rounded-lg object-cover"
+                />
+              ) : (
+                <div className="w-8 h-8 bg-sidebar-primary rounded-lg flex items-center justify-center">
+                  <span className="text-sm font-bold text-sidebar-primary-foreground">
+                    {projectName.substring(0, 2).toUpperCase()}
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>
