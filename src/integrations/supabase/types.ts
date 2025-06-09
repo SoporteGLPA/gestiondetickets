@@ -790,6 +790,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      save_push_subscription: {
+        Args: { p_user_id: string; p_subscription: Json; p_endpoint: string }
+        Returns: undefined
+      }
     }
     Enums: {
       article_category: "email" | "red" | "hardware" | "software" | "seguridad"

@@ -65,7 +65,7 @@ export function usePushNotifications() {
       });
 
       // Guardar la suscripción en la base de datos usando rpc para evitar problemas de tipos
-      const { error } = await supabase.rpc('save_push_subscription', {
+      const { error } = await (supabase as any).rpc('save_push_subscription', {
         p_user_id: user.id,
         p_subscription: JSON.stringify(pushSubscription),
         p_endpoint: pushSubscription.endpoint,
