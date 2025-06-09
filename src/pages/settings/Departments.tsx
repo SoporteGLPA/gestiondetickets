@@ -75,14 +75,25 @@ const Departments = () => {
   });
 
   const onCreateSubmit = async (data: DepartmentFormData) => {
-    await createDepartmentMutation.mutateAsync(data);
+    // Ensure name is provided since it's required by the mutation
+    const submitData = {
+      name: data.name,
+      description: data.description || undefined,
+    };
+    await createDepartmentMutation.mutateAsync(submitData);
     createForm.reset();
     setShowCreateForm(false);
   };
 
   const onEditSubmit = async (data: DepartmentFormData) => {
     if (!selectedDepartment) return;
-    await updateDepartmentMutation.mutateAsync({ id: selectedDepartment.id, ...data });
+    // Ensure name is provided since it's required by the mutation
+    const submitData = {
+      id: selectedDepartment.id,
+      name: data.name,
+      description: data.description || undefined,
+    };
+    await updateDepartmentMutation.mutateAsync(submitData);
     editForm.reset();
     setShowEditForm(false);
     setSelectedDepartment(null);
