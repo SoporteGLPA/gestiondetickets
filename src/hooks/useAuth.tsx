@@ -32,21 +32,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
   const { toast } = useToast();
 
   const fetchProfile = async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-    if (error) {
-      console.error('Error fetching profile:', error);
+      if (error) {
+        console.error('Error fetching profile:', error);
+        return null;
+      }
+
+      return data as Profile;
+    } catch (error) {
+      console.error('Error in fetchProfile:', error);
       return null;
     }
-
-    return data as Profile;
   };
 
   const updateProfile = async () => {
@@ -62,40 +68,66 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    if (initialCheckDone) return;
+
     const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
+      try {
+        setIsLoading(true);
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Error getting session:', error);
+          setUser(null);
+          setProfile(null);
+        } else {
+          setUser(session?.user ?? null);
 
-      if (session?.user) {
-        const profileData = await fetchProfile(session.user.id);
-        setProfile(profileData);
+          if (session?.user) {
+            const profileData = await fetchProfile(session.user.id);
+            setProfile(profileData);
+          } else {
+            setProfile(null);
+          }
+        }
+      } catch (error) {
+        console.error('Error in getSession:', error);
+        setUser(null);
+        setProfile(null);
+      } finally {
+        setIsLoading(false);
+        setInitialCheckDone(true);
       }
-
-      setIsLoading(false);
     };
 
     getSession();
+  }, [initialCheckDone]);
+
+  useEffect(() => {
+    if (!initialCheckDone) return;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setUser(session?.user ?? null);
+        console.log('Auth state changed:', event);
+        
+        try {
+          setUser(session?.user ?? null);
 
-        if (session?.user) {
-          const profileData = await fetchProfile(session.user.id);
-          setProfile(profileData);
-        } else {
-          setProfile(null);
+          if (session?.user) {
+            const profileData = await fetchProfile(session.user.id);
+            setProfile(profileData);
+          } else {
+            setProfile(null);
+          }
+        } catch (error) {
+          console.error('Error in auth state change:', error);
         }
-
-        setIsLoading(false);
       }
     );
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [initialCheckDone]);
 
   const signIn = async (email: string, password: string) => {
-    setIsLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -104,26 +136,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error;
     } catch (error: any) {
+      console.error('Sign in error:', error);
       toast({
         variant: "destructive",
         title: "Error de autenticación",
         description: error.message || "Credenciales inválidas",
       });
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo cerrar sesión",
-      });
-      throw error;
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "No se pudo cerrar sesión",
+        });
+        throw error;
+      }
+    } catch (error) {
+      console.error('Sign out error:', error);
     }
   };
 

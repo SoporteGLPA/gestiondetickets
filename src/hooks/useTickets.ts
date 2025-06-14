@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -54,38 +53,46 @@ export function useTickets(showClosed: boolean = false) {
   return useQuery({
     queryKey: ['tickets', showClosed],
     queryFn: async () => {
-      let query = supabase
-        .from('tickets')
-        .select(`
-          *,
-          profiles_customer:profiles!customer_id(full_name, email, first_name, last_name),
-          profiles_assignee:profiles!assignee_id(full_name, email, first_name, last_name),
-          ticket_categories(name, color),
-          departments(
-            name,
-            department_categories(name, color)
-          )
-        `);
+      try {
+        let query = supabase
+          .from('tickets')
+          .select(`
+            *,
+            profiles_customer:profiles!customer_id(full_name, email, first_name, last_name),
+            profiles_assignee:profiles!assignee_id(full_name, email, first_name, last_name),
+            ticket_categories(name, color),
+            departments(
+              name,
+              department_categories(name, color)
+            )
+          `);
 
-      if (showClosed) {
-        query = query.eq('status', 'cerrado');
-      } else {
-        query = query.neq('status', 'cerrado');
+        if (showClosed) {
+          query = query.eq('status', 'cerrado');
+        } else {
+          query = query.neq('status', 'cerrado');
+        }
+
+        const { data, error } = await query.order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching tickets:', error);
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "No se pudieron cargar los tickets",
+          });
+          throw error;
+        }
+
+        return data as Ticket[];
+      } catch (error) {
+        console.error('Error in useTickets:', error);
+        return [];
       }
-
-      const { data, error } = await query.order('created_at', { ascending: false });
-
-      if (error) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "No se pudieron cargar los tickets",
-        });
-        throw error;
-      }
-
-      return data as Ticket[];
     },
+    retry: 3,
+    retryDelay: 1000,
   });
 }
 
@@ -102,6 +109,8 @@ export function useCreateTicket() {
       category_id?: string;
       customer_id: string;
     }) => {
+      console.log('Creating ticket with data:', ticketData);
+      
       // Asegurar que ticket_number esté vacío para que el trigger lo genere
       const insertData = {
         ...ticketData,
@@ -114,7 +123,12 @@ export function useCreateTicket() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error creating ticket:', error);
+        throw error;
+      }
+      
+      console.log('Ticket created successfully:', data);
       return data;
     },
     onSuccess: () => {
@@ -124,12 +138,18 @@ export function useCreateTicket() {
         description: "El ticket ha sido creado exitosamente",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error('Error creating ticket:', error);
+      let errorMessage = "No se pudo crear el ticket";
+      
+      if (error?.code === '23503') {
+        errorMessage = "Error de categoría: La categoría seleccionada no es válida";
+      }
+      
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo crear el ticket",
+        description: errorMessage,
       });
     },
   });

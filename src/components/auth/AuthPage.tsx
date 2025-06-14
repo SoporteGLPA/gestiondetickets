@@ -10,11 +10,23 @@ import { useCompanySettings } from '@/hooks/useCompanySettings';
 
 export function AuthPage() {
   const { signIn, user, loading } = useAuth();
-  const { data: companySettings } = useCompanySettings();
+  const { data: companySettings, isLoading: settingsLoading } = useCompanySettings();
   const [isLoading, setIsLoading] = useState(false);
 
+  console.log('AuthPage render - user:', user, 'loading:', loading);
+
+  // Show loading spinner while checking auth or settings
+  if (loading || settingsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-emerald-100">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-600"></div>
+      </div>
+    );
+  }
+
   // Redirect if already authenticated
-  if (user && !loading) {
+  if (user) {
+    console.log('User authenticated, redirecting to dashboard');
     return <Navigate to="/" replace />;
   }
 
@@ -22,21 +34,19 @@ export function AuthPage() {
     e.preventDefault();
     setIsLoading(true);
 
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get('email') as string;
-    const password = formData.get('password') as string;
+    try {
+      const formData = new FormData(e.currentTarget);
+      const email = formData.get('email') as string;
+      const password = formData.get('password') as string;
 
-    await signIn(email, password);
-    setIsLoading(false);
+      console.log('Attempting sign in for:', email);
+      await signIn(email, password);
+    } catch (error) {
+      console.error('Sign in failed:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 to-emerald-100">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-600"></div>
-      </div>
-    );
-  }
 
   const projectName = companySettings?.project_name || 'SoporteTech';
   const logoUrl = companySettings?.logo_url;
