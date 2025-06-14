@@ -35,6 +35,7 @@ export function TicketChat({ ticketId }: TicketChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const channelRef = useRef<any>(null);
 
   const { data: comments, isLoading } = useQuery({
     queryKey: ['ticket-comments', ticketId],
@@ -93,8 +94,15 @@ export function TicketChat({ ticketId }: TicketChatProps) {
 
   // Configurar realtime para comentarios
   useEffect(() => {
+    // Cleanup previous channel if it exists
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
+    // Create new channel
     const channel = supabase
-      .channel('ticket-comments')
+      .channel(`ticket-comments-${ticketId}`)
       .on(
         'postgres_changes',
         {
@@ -109,8 +117,13 @@ export function TicketChat({ ticketId }: TicketChatProps) {
       )
       .subscribe();
 
+    channelRef.current = channel;
+
     return () => {
-      supabase.removeChannel(channel);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     };
   }, [ticketId, queryClient]);
 
