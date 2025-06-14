@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -31,7 +30,7 @@ interface SidebarProps {
   onToggle?: (isExpanded: boolean) => void;
 }
 
-export default function Sidebar({ className, onToggle }: SidebarProps) {
+export function Sidebar({ className, onToggle }: SidebarProps) {
   const { isExpanded, isMobile, handleMouseEnter, handleMouseLeave, toggleSidebar } = useSidebarState();
   const location = useLocation();
   const { profile } = useAuth();

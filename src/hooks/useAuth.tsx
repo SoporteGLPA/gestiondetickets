@@ -1,170 +1,134 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-interface Profile {
+export interface Profile {
   id: string;
-  full_name: string;
   email: string;
+  full_name: string;
+  first_name?: string;
+  last_name?: string;
   role: 'admin' | 'agent' | 'user';
-  avatar_url?: string;
-  phone?: string;
-  department?: string;
-  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
   profile: Profile | null;
-  loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
+  isLoading: boolean;
+  signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  hasRole: (roles: string[]) => boolean;
+  updateProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
   const fetchProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
 
-      if (error) throw error;
-      setProfile(data);
-    } catch (error) {
+    if (error) {
       console.error('Error fetching profile:', error);
-      setProfile(null);
+      return null;
     }
+
+    return data as Profile;
+  };
+
+  const updateProfile = async () => {
+    if (!user) return;
+    
+    const profileData = await fetchProfile(user.id);
+    setProfile(profileData);
   };
 
   useEffect(() => {
-    // Set up auth state listener
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        const profileData = await fetchProfile(session.user.id);
+        setProfile(profileData);
+      }
+
+      setIsLoading(false);
+    };
+
+    getSession();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setSession(session);
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          setTimeout(() => {
-            fetchProfile(session.user.id);
-          }, 0);
+          const profileData = await fetchProfile(session.user.id);
+          setProfile(profileData);
         } else {
           setProfile(null);
         }
-        
-        setLoading(false);
+
+        setIsLoading(false);
       }
     );
-
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      }
-      
-      setLoading(false);
-    });
 
     return () => subscription.unsubscribe();
   }, []);
 
   const signIn = async (email: string, password: string) => {
+    setIsLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) {
-        toast({
-          variant: "destructive",
-          title: "Error de autenticación",
-          description: error.message,
-        });
-      }
-
-      return { error };
-    } catch (error) {
-      return { error };
-    }
-  };
-
-  const signUp = async (email: string, password: string, fullName: string) => {
-    try {
-      const redirectUrl = `${window.location.origin}/`;
-      
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            full_name: fullName
-          }
-        }
+      if (error) throw error;
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error de autenticación",
+        description: error.message || "Credenciales inválidas",
       });
-
-      if (error) {
-        toast({
-          variant: "destructive",
-          title: "Error de registro",
-          description: error.message,
-        });
-      } else {
-        toast({
-          title: "Registro exitoso",
-          description: "Por favor revisa tu correo para confirmar tu cuenta.",
-        });
-      }
-
-      return { error };
-    } catch (error) {
-      return { error };
+      throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
-    setProfile(null);
-  };
-
-  const hasRole = (roles: string[]) => {
-    if (!profile) return false;
-    return roles.includes(profile.role);
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo cerrar sesión",
+      });
+      throw error;
+    }
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        session,
-        profile,
-        loading,
-        signIn,
-        signUp,
-        signOut,
-        hasRole,
-      }}
-    >
+    <AuthContext.Provider value={{
+      user,
+      profile,
+      isLoading,
+      signIn,
+      signOut,
+      updateProfile,
+    }}>
       {children}
     </AuthContext.Provider>
   );
