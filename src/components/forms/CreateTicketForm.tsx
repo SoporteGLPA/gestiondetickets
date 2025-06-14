@@ -44,7 +44,7 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
       description: '',
       priority: 'media',
       department_id: '',
-      category_id: 'none',
+      category_id: undefined,
     },
   });
 
@@ -53,7 +53,7 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
 
     console.log('Form data before processing:', data);
 
-    // Preparar los datos del ticket - NO incluir category_id si es "none" o está vacío
+    // Preparar los datos del ticket - construir el objeto base sin category_id
     const ticketData: any = {
       title: data.title,
       description: data.description,
@@ -62,9 +62,15 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
       customer_id: user.id,
     };
 
-    // Solo agregar category_id si se seleccionó una categoría válida (no "none" y no undefined)
-    if (data.category_id && data.category_id !== 'none') {
+    // CRÍTICO: Solo agregar category_id si es un UUID válido (no "none", no undefined, no string vacío)
+    if (data.category_id && 
+        data.category_id !== 'none' && 
+        data.category_id.length > 0 &&
+        data.category_id.includes('-')) { // UUID básico check
       ticketData.category_id = data.category_id;
+      console.log('Adding category_id to ticket:', data.category_id);
+    } else {
+      console.log('Skipping category_id - value is:', data.category_id);
     }
 
     console.log('Final ticket data to be sent:', ticketData);
@@ -78,7 +84,17 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
   const handleDepartmentChange = (departmentId: string) => {
     setSelectedDepartmentId(departmentId);
     form.setValue('department_id', departmentId);
-    form.setValue('category_id', 'none'); // Reset to "none" when department changes
+    // Reset category when department changes
+    form.setValue('category_id', undefined);
+  };
+
+  const handleCategoryChange = (categoryId: string) => {
+    // Si se selecciona "none", establecer como undefined
+    if (categoryId === 'none') {
+      form.setValue('category_id', undefined);
+    } else {
+      form.setValue('category_id', categoryId);
+    }
   };
 
   return (
@@ -153,7 +169,7 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Categoría del Departamento (Opcional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                    <Select onValueChange={handleCategoryChange} value={field.value || 'none'}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Seleccione una categoría (opcional)" />
@@ -187,7 +203,7 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Categoría General (Opcional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                    <Select onValueChange={handleCategoryChange} value={field.value || 'none'}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Seleccione una categoría (opcional)" />
