@@ -44,14 +44,16 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
       description: '',
       priority: 'media',
       department_id: '',
-      category_id: undefined,
+      category_id: 'none',
     },
   });
 
   const onSubmit = async (data: TicketFormData) => {
     if (!user) return;
 
-    // Solo incluir category_id si tiene un valor válido y no es "none"
+    console.log('Form data before processing:', data);
+
+    // Preparar los datos del ticket - NO incluir category_id si es "none" o está vacío
     const ticketData: any = {
       title: data.title,
       description: data.description,
@@ -60,12 +62,12 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
       customer_id: user.id,
     };
 
-    // Solo agregar category_id si se seleccionó una categoría válida y no es "none"
+    // Solo agregar category_id si se seleccionó una categoría válida (no "none" y no undefined)
     if (data.category_id && data.category_id !== 'none') {
       ticketData.category_id = data.category_id;
     }
 
-    console.log('Creating ticket with data:', ticketData);
+    console.log('Final ticket data to be sent:', ticketData);
 
     await createTicketMutation.mutateAsync(ticketData);
     form.reset();
@@ -178,7 +180,6 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
               />
             )}
 
-            {/* Fallback to general categories if no department categories */}
             {(!selectedDepartmentId || !departmentCategories || departmentCategories.length === 0) && categories && categories.length > 0 && (
               <FormField
                 control={form.control}
