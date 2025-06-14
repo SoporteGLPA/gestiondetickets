@@ -380,11 +380,9 @@ export type Database = {
           created_at: string
           department: string | null
           email: string
-          first_name: string | null
           full_name: string
           id: string
           is_active: boolean
-          last_name: string | null
           phone: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
@@ -395,11 +393,9 @@ export type Database = {
           created_at?: string
           department?: string | null
           email: string
-          first_name?: string | null
           full_name: string
           id: string
           is_active?: boolean
-          last_name?: string | null
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
@@ -410,11 +406,9 @@ export type Database = {
           created_at?: string
           department?: string | null
           email?: string
-          first_name?: string | null
           full_name?: string
           id?: string
           is_active?: boolean
-          last_name?: string | null
           phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
@@ -664,7 +658,6 @@ export type Database = {
           customer_id: string
           department_id: string | null
           description: string
-          due_date: string | null
           id: string
           merged_ticket_info: Json | null
           priority: Database["public"]["Enums"]["ticket_priority"]
@@ -682,7 +675,6 @@ export type Database = {
           customer_id: string
           department_id?: string | null
           description: string
-          due_date?: string | null
           id?: string
           merged_ticket_info?: Json | null
           priority?: Database["public"]["Enums"]["ticket_priority"]
@@ -700,7 +692,6 @@ export type Database = {
           customer_id?: string
           department_id?: string | null
           description?: string
-          due_date?: string | null
           id?: string
           merged_ticket_info?: Json | null
           priority?: Database["public"]["Enums"]["ticket_priority"]

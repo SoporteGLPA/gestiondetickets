@@ -1,3 +1,4 @@
+
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,15 +10,10 @@ import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { TicketChat } from './TicketChat';
 import { TicketStatusDropdown } from './TicketStatusDropdown';
-import { useAuth } from '@/hooks/useAuth';
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export function TicketDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { profile } = useAuth();
-  const queryClient = useQueryClient();
-  const canEditDue = profile?.role === 'admin' || profile?.role === 'agent';
 
   const { data: ticket, isLoading } = useQuery({
     queryKey: ['ticket', id],
@@ -72,21 +68,6 @@ export function TicketDetail() {
   };
 
   const mergedInfo = ticket.merged_ticket_info as any;
-
-  // Para actualizar la fecha de vencimiento
-  const dueDateMutation = useMutation({
-    mutationFn: async (dueDate: string | null) => {
-      if (!ticket?.id) throw new Error("No hay ticket");
-      const { error } = await supabase
-        .from('tickets')
-        .update({ due_date: dueDate })
-        .eq('id', ticket.id)
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["ticket", id] });
-    }
-  });
 
   return (
     <div className="container mx-auto px-4 py-6 space-y-6">
@@ -230,25 +211,6 @@ export function TicketDetail() {
                     locale: es 
                   })}
                 </span>
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <span className="font-medium">Vence:</span>
-                {canEditDue ? (
-                  <input
-                    type="datetime-local"
-                    className="border border-black rounded px-2 py-1 text-sm"
-                    style={{ maxWidth: 220 }}
-                    value={ticket.due_date ? new Date(ticket.due_date).toISOString().slice(0, 16) : ''}
-                    onChange={e => dueDateMutation.mutate(e.target.value ? new Date(e.target.value).toISOString() : null)}
-                  />
-                ) : (
-                  <span className="text-sm text-muted-foreground">
-                    {ticket.due_date
-                      ? new Date(ticket.due_date).toLocaleString()
-                      : "No asignada"}
-                  </span>
-                )}
               </div>
             </CardContent>
           </Card>

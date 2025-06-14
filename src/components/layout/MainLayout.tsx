@@ -1,11 +1,12 @@
 
 import { useState, useEffect } from 'react';
-import Sidebar from './Sidebar'; // Fixed import (default export)
 import { Outlet } from 'react-router-dom';
+import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { cn } from '@/lib/utils';
 
 export function MainLayout() {
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -18,12 +19,16 @@ export function MainLayout() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  const handleSidebarToggle = (isExpanded: boolean) => {
+    setIsSidebarExpanded(isExpanded);
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      <Sidebar />
+      <Sidebar onToggle={handleSidebarToggle} />
       <div className={cn(
         "transition-all duration-300",
-        isMobile ? "ml-0" : "ml-[200px]"
+        isMobile ? "ml-0" : (isSidebarExpanded ? "ml-64" : "ml-16")
       )}>
         <Header />
         <main className={cn(
