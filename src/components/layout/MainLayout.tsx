@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
+import Sidebar from './Sidebar'; // Fixed import (default export)
 import { Outlet } from 'react-router-dom';
-import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { cn } from '@/lib/utils';
 
