@@ -12,13 +12,15 @@ import {
   BookOpen, 
   Users, 
   Settings, 
-  BarChart3
+  BarChart3,
+  User
 } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'agent', 'user'] },
   { name: 'Tickets', href: '/tickets', icon: Ticket, roles: ['admin', 'agent', 'user'] },
   { name: 'Base de Conocimientos', href: '/knowledge', icon: BookOpen, roles: ['admin', 'agent', 'user'] },
+  { name: 'Mi Perfil', href: '/profile', icon: User, roles: ['admin', 'agent', 'user'] },
   { name: 'Usuarios', href: '/users', icon: Users, roles: ['admin', 'agent'] },
   { name: 'Reportes', href: '/reports', icon: BarChart3, roles: ['admin', 'agent'] },
   { name: 'Configuración', href: '/settings', icon: Settings, roles: ['admin', 'agent'] },
@@ -29,7 +31,7 @@ interface SidebarProps {
   onToggle?: (isExpanded: boolean) => void;
 }
 
-export function Sidebar({ className, onToggle }: SidebarProps) {
+export default function Sidebar({ className, onToggle }: SidebarProps) {
   const { isExpanded, isMobile, handleMouseEnter, handleMouseLeave, toggleSidebar } = useSidebarState();
   const location = useLocation();
   const { profile } = useAuth();

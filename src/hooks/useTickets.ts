@@ -19,16 +19,21 @@ export interface Ticket {
   category_id?: string;
   department_id?: string;
   resolution_notes?: string;
+  due_date?: string;
   created_at: string;
   updated_at: string;
   resolved_at?: string;
   profiles_customer: {
     full_name: string;
     email: string;
+    first_name?: string;
+    last_name?: string;
   };
   profiles_assignee?: {
     full_name: string;
     email: string;
+    first_name?: string;
+    last_name?: string;
   };
   ticket_categories?: {
     name: string;
@@ -53,8 +58,8 @@ export function useTickets(showClosed: boolean = false) {
         .from('tickets')
         .select(`
           *,
-          profiles_customer:profiles!customer_id(full_name, email),
-          profiles_assignee:profiles!assignee_id(full_name, email),
+          profiles_customer:profiles!customer_id(full_name, email, first_name, last_name),
+          profiles_assignee:profiles!assignee_id(full_name, email, first_name, last_name),
           ticket_categories(name, color),
           departments(
             name,
@@ -97,6 +102,7 @@ export function useCreateTicket() {
       category_id?: string;
       customer_id: string;
     }) => {
+      // Asegurar que ticket_number esté vacío para que el trigger lo genere
       const insertData = {
         ...ticketData,
         ticket_number: ''
@@ -104,7 +110,7 @@ export function useCreateTicket() {
 
       const { data, error } = await supabase
         .from('tickets')
-        .insert(insertData)
+        .insert([insertData])
         .select()
         .single();
 
@@ -119,6 +125,7 @@ export function useCreateTicket() {
       });
     },
     onError: (error) => {
+      console.error('Error creating ticket:', error);
       toast({
         variant: "destructive",
         title: "Error",

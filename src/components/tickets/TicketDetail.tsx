@@ -1,4 +1,3 @@
-
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,12 +9,13 @@ import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { TicketChat } from './TicketChat';
 import { TicketStatusDropdown } from './TicketStatusDropdown';
+import { DueDateField } from './DueDateField';
 
 export function TicketDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const { data: ticket, isLoading } = useQuery({
+  const { data: ticket, isLoading, refetch } = useQuery({
     queryKey: ['ticket', id],
     queryFn: async () => {
       if (!id) throw new Error('No ticket ID provided');
@@ -201,6 +201,13 @@ export function TicketDetail() {
                   </Badge>
                 </div>
               )}
+
+              {/* Fecha de Vencimiento */}
+              <DueDateField 
+                ticketId={ticket.id} 
+                currentDueDate={ticket.due_date}
+                onUpdate={refetch}
+              />
 
               <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                 <Calendar className="h-4 w-4" />

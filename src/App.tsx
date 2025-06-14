@@ -16,6 +16,7 @@ import Knowledge from "./pages/Knowledge";
 import Users from "./pages/Users";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
 import Departments from "./pages/settings/Departments";
 import TicketStatuses from "./pages/settings/TicketStatuses";
 import Company from "./pages/settings/Company";
@@ -51,6 +52,11 @@ const App = () => (
               <Route path="knowledge/:id" element={
                 <ProtectedRoute>
                   <ArticleReader />
+                </ProtectedRoute>
+              } />
+              <Route path="profile" element={
+                <ProtectedRoute>
+                  <Profile />
                 </ProtectedRoute>
               } />
               <Route path="users" element={
