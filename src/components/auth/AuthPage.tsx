@@ -40,10 +40,24 @@ export function AuthPage() {
 
   const projectName = companySettings?.project_name || 'SoporteTech';
   const logoUrl = companySettings?.logo_url;
+  const authBackgroundUrl = companySettings?.auth_background_url;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-xl border-emerald-200">
+    <div 
+      className="min-h-screen flex items-center justify-center p-4 relative"
+      style={{
+        backgroundImage: authBackgroundUrl ? `url(${authBackgroundUrl})` : 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }}
+    >
+      {/* Overlay para mejorar la legibilidad */}
+      {authBackgroundUrl && (
+        <div className="absolute inset-0 bg-black/20" />
+      )}
+      
+      <Card className="w-full max-w-md shadow-xl border-emerald-200 relative z-10 bg-white/95 backdrop-blur-sm">
         <CardHeader className="text-center space-y-4">
           <div className="flex justify-center mb-4">
             {logoUrl ? (
