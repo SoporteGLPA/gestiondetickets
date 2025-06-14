@@ -53,7 +53,7 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
 
     console.log('Form data before processing:', data);
 
-    // Preparar los datos del ticket - construir el objeto base sin category_id
+    // Construir el objeto base del ticket SIN category_id
     const ticketData: any = {
       title: data.title,
       description: data.description,
@@ -62,15 +62,22 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
       customer_id: user.id,
     };
 
-    // CRÍTICO: Solo agregar category_id si es un UUID válido (no "none", no undefined, no string vacío)
-    if (data.category_id && 
-        data.category_id !== 'none' && 
-        data.category_id.length > 0 &&
-        data.category_id.includes('-')) { // UUID básico check
-      ticketData.category_id = data.category_id;
-      console.log('Adding category_id to ticket:', data.category_id);
+    // SOLO agregar category_id si hay una categoría válida seleccionada
+    // Verificamos que no sea undefined, no sea "none", y que exista en las categorías disponibles
+    if (data.category_id && data.category_id !== 'none') {
+      // Verificar que la categoría existe en las categorías del departamento o en las categorías generales
+      const categoryExists = 
+        (departmentCategories && departmentCategories.some(cat => cat.id === data.category_id)) ||
+        (categories && categories.some(cat => cat.id === data.category_id));
+      
+      if (categoryExists) {
+        ticketData.category_id = data.category_id;
+        console.log('Adding valid category_id to ticket:', data.category_id);
+      } else {
+        console.log('Category not found, skipping category_id:', data.category_id);
+      }
     } else {
-      console.log('Skipping category_id - value is:', data.category_id);
+      console.log('No category selected, skipping category_id');
     }
 
     console.log('Final ticket data to be sent:', ticketData);
