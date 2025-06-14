@@ -4,25 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Users as UsersIcon, Mail, Shield } from 'lucide-react';
 import { useUsers, useCreateUser, useUpdateUser, useDeleteUser, type User } from '@/hooks/useUsers';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -42,6 +33,7 @@ const Users = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -127,8 +119,33 @@ const Users = () => {
     }
   };
 
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'admin': return 'destructive';
+      case 'agent': return 'default';
+      default: return 'secondary';
+    }
+  };
+
+  const getRoleName = (role: string) => {
+    switch (role) {
+      case 'admin': return 'Administrador';
+      case 'agent': return 'Agente';
+      default: return 'Usuario';
+    }
+  };
+
+  const filteredUsers = users?.filter(user =>
+    user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
+
   if (isLoading) {
-    return <div>Cargando usuarios...</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-emerald-600"></div>
+      </div>
+    );
   }
 
   if (isError) {
@@ -137,125 +154,220 @@ const Users = () => {
 
   return (
     <div className="space-y-6 p-2 md:p-0">
+      {/* Header Section */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight section-title-black">
-            Gestión de usuarios
-          </h1>
-          <p className="text-muted-foreground text-sm md:text-base">
-            Administra los usuarios del sistema
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-emerald-100 rounded-lg">
+            <UsersIcon className="h-6 w-6 text-emerald-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-emerald-800">
+              Gestión de usuarios
+            </h1>
+            <p className="text-muted-foreground text-sm md:text-base">
+              Administra los usuarios del sistema
+            </p>
+          </div>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
           <UserImportExport />
           {(profile?.role === 'admin' || profile?.role === 'agent') && (
-            <Button onClick={() => setShowCreateForm(true)}>
+            <Button 
+              onClick={() => setShowCreateForm(true)}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              <Plus className="mr-2 h-4 w-4" />
               Crear Usuario
             </Button>
           )}
         </div>
       </div>
 
-      <Table>
-        <TableCaption>Lista de usuarios registrados en el sistema.</TableCaption>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[100px]">ID</TableHead>
-            <TableHead>Nombre</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Rol</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {users?.map((user) => (
-            <TableRow key={user.id}>
-              <TableCell className="font-medium">{user.id}</TableCell>
-              <TableCell>{user.full_name}</TableCell>
-              <TableCell>{user.email}</TableCell>
-              <TableCell>{user.role}</TableCell>
-              <TableCell className="text-right">
-                <div className="flex justify-end gap-2">
+      {/* Search and Stats */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Input
+            placeholder="Buscar usuarios por nombre o email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Card className="sm:w-auto">
+          <CardContent className="flex items-center gap-2 p-3">
+            <UsersIcon className="h-4 w-4 text-emerald-600" />
+            <span className="text-sm font-medium">Total: {users?.length || 0}</span>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Users Grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {filteredUsers.map((user) => (
+          <Card key={user.id} className="hover:shadow-lg transition-all duration-200 border-l-4 border-l-emerald-500">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-12 w-12">
+                    <AvatarFallback className="bg-emerald-100 text-emerald-700 font-semibold">
+                      {user.full_name?.split(' ').map(n => n[0]).join('') || 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <h3 className="font-semibold text-lg">{user.full_name}</h3>
+                    <Badge variant={getRoleColor(user.role)} className="text-xs">
+                      {getRoleName(user.role)}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="flex gap-1">
                   {(profile?.role === 'admin' || profile?.role === 'agent') && (
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      onClick={() => {
-                        setSelectedUser(user);
-                        setShowEditForm(true);
-                      }}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  )}
-                  {(profile?.role === 'admin' || profile?.role === 'agent') && (
-                    <Button 
-                      variant="destructive" 
-                      size="icon" 
-                      onClick={() => handleDeleteUser(user.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => {
+                          setSelectedUser(user);
+                          setShowEditForm(true);
+                        }}
+                        className="h-8 w-8 p-0 hover:bg-emerald-50"
+                      >
+                        <Edit className="h-4 w-4 text-emerald-600" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleDeleteUser(user.id)}
+                        className="h-8 w-8 p-0 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </>
                   )}
                 </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-        <TableFooter>
-          <TableRow>
-            <TableCell colSpan={5} className="text-center">
-              Total de usuarios: {users?.length}
-            </TableCell>
-          </TableRow>
-        </TableFooter>
-      </Table>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Mail className="h-4 w-4" />
+                  <span className="truncate">{user.email}</span>
+                </div>
+                
+                {user.department && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Shield className="h-4 w-4" />
+                    <span>{user.department}</span>
+                  </div>
+                )}
+                
+                <div className="pt-2 border-t">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Creado:</span>
+                    <span>{new Date(user.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground mt-1">
+                    <span>Estado:</span>
+                    <Badge variant={user.is_active ? "default" : "secondary"} className="text-xs">
+                      {user.is_active ? "Activo" : "Inactivo"}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {filteredUsers.length === 0 && (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12 px-4">
+            <UsersIcon className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">
+              {searchTerm ? 'No se encontraron usuarios' : 'No hay usuarios registrados'}
+            </h3>
+            <p className="text-muted-foreground mb-4 text-center">
+              {searchTerm 
+                ? 'Intenta con otros términos de búsqueda' 
+                : 'Crea tu primer usuario para comenzar'
+              }
+            </p>
+            {!searchTerm && (profile?.role === 'admin' || profile?.role === 'agent') && (
+              <Button 
+                onClick={() => setShowCreateForm(true)}
+                className="bg-emerald-600 hover:bg-emerald-700"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Crear Usuario
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Create User Form */}
       <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Crear Usuario</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5 text-emerald-600" />
+              Crear Usuario
+            </DialogTitle>
             <DialogDescription>
               Crea un nuevo usuario para el sistema.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Nombre
-              </Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" />
+          <form onSubmit={handleCreateUser} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nombre completo</Label>
+              <Input 
+                id="name" 
+                value={name} 
+                onChange={(e) => setName(e.target.value)} 
+                placeholder="Ingresa el nombre completo"
+                required
+              />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="email" className="text-right">
-                Email
-              </Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="col-span-3" />
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input 
+                id="email" 
+                type="email" 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="usuario@empresa.com"
+                required
+              />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="password" className="text-right">
-                Contraseña
-              </Label>
-              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="col-span-3" />
+            <div className="space-y-2">
+              <Label htmlFor="password">Contraseña</Label>
+              <Input 
+                id="password" 
+                type="password" 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+              />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="role" className="text-right">
-                Rol
-              </Label>
+            <div className="space-y-2">
+              <Label htmlFor="role">Rol</Label>
               <select 
                 id="role" 
                 value={role} 
                 onChange={(e) => setRole(e.target.value as UserRole)} 
-                className="col-span-3 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="user">Usuario</option>
                 <option value="agent">Agente</option>
                 <option value="admin">Administrador</option>
               </select>
             </div>
-          </div>
-          <Button onClick={handleCreateUser}>Crear Usuario</Button>
+            <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700">
+              <Plus className="mr-2 h-4 w-4" />
+              Crear Usuario
+            </Button>
+          </form>
         </DialogContent>
       </Dialog>
 
@@ -263,41 +375,54 @@ const Users = () => {
       <Dialog open={showEditForm} onOpenChange={setShowEditForm}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Editar Usuario</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="h-5 w-5 text-emerald-600" />
+              Editar Usuario
+            </DialogTitle>
             <DialogDescription>
               Edita la información del usuario.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Nombre
-              </Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} className="col-span-3" />
+          <form onSubmit={handleUpdateUser} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Nombre completo</Label>
+              <Input 
+                id="edit-name" 
+                value={name} 
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ingresa el nombre completo"
+                required
+              />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="email" className="text-right">
-                Email
-              </Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="col-span-3" />
+            <div className="space-y-2">
+              <Label htmlFor="edit-email">Email</Label>
+              <Input 
+                id="edit-email" 
+                type="email" 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="usuario@empresa.com"
+                required
+              />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="role" className="text-right">
-                Rol
-              </Label>
+            <div className="space-y-2">
+              <Label htmlFor="edit-role">Rol</Label>
               <select 
-                id="role" 
+                id="edit-role" 
                 value={role} 
                 onChange={(e) => setRole(e.target.value as UserRole)} 
-                className="col-span-3 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+                className="w-full px-3 py-2 border border-input bg-background rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="user">Usuario</option>
                 <option value="agent">Agente</option>
                 <option value="admin">Administrador</option>
               </select>
             </div>
-          </div>
-          <Button onClick={handleUpdateUser}>Actualizar Usuario</Button>
+            <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700">
+              <Edit className="mr-2 h-4 w-4" />
+              Actualizar Usuario
+            </Button>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

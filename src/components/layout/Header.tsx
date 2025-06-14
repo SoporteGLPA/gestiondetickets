@@ -29,6 +29,10 @@ export function Header() {
     navigate(`/tickets/${ticketId}`);
   };
 
+  const handleProfileClick = () => {
+    navigate('/profile');
+  };
+
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'admin': return 'destructive';
@@ -141,7 +145,7 @@ export function Header() {
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleProfileClick}>
                 <User className="mr-2 h-4 w-4" />
                 Perfil
               </DropdownMenuItem>

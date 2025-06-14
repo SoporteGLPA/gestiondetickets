@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -11,15 +12,13 @@ import {
   BookOpen, 
   Users, 
   Settings, 
-  BarChart3,
-  User
+  BarChart3
 } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard, roles: ['admin', 'agent', 'user'] },
   { name: 'Tickets', href: '/tickets', icon: Ticket, roles: ['admin', 'agent', 'user'] },
   { name: 'Base de Conocimientos', href: '/knowledge', icon: BookOpen, roles: ['admin', 'agent', 'user'] },
-  { name: 'Mi Perfil', href: '/profile', icon: User, roles: ['admin', 'agent', 'user'] },
   { name: 'Usuarios', href: '/users', icon: Users, roles: ['admin', 'agent'] },
   { name: 'Reportes', href: '/reports', icon: BarChart3, roles: ['admin', 'agent'] },
   { name: 'Configuración', href: '/settings', icon: Settings, roles: ['admin', 'agent'] },
