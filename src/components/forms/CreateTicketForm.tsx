@@ -44,14 +44,14 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
       description: '',
       priority: 'media',
       department_id: '',
-      category_id: '',
+      category_id: undefined,
     },
   });
 
   const onSubmit = async (data: TicketFormData) => {
     if (!user) return;
 
-    // Solo incluir category_id si tiene un valor válido
+    // Solo incluir category_id si tiene un valor válido y no es "none"
     const ticketData: any = {
       title: data.title,
       description: data.description,
@@ -60,8 +60,8 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
       customer_id: user.id,
     };
 
-    // Solo agregar category_id si se seleccionó una categoría válida
-    if (data.category_id && data.category_id.trim() !== '') {
+    // Solo agregar category_id si se seleccionó una categoría válida y no es "none"
+    if (data.category_id && data.category_id !== 'none') {
       ticketData.category_id = data.category_id;
     }
 
@@ -76,7 +76,7 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
   const handleDepartmentChange = (departmentId: string) => {
     setSelectedDepartmentId(departmentId);
     form.setValue('department_id', departmentId);
-    form.setValue('category_id', ''); // Reset category when department changes
+    form.setValue('category_id', 'none'); // Reset to "none" when department changes
   };
 
   return (
@@ -151,14 +151,14 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Categoría del Departamento (Opcional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || 'none'}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Seleccione una categoría (opcional)" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Sin categoría</SelectItem>
+                        <SelectItem value="none">Sin categoría</SelectItem>
                         {departmentCategories.map((category) => (
                           <SelectItem key={category.id} value={category.id}>
                             <div className="flex items-center gap-2">
@@ -186,14 +186,14 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Categoría General (Opcional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value || 'none'}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Seleccione una categoría (opcional)" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">Sin categoría</SelectItem>
+                        <SelectItem value="none">Sin categoría</SelectItem>
                         {categories.map((category) => (
                           <SelectItem key={category.id} value={category.id}>
                             <div className="flex items-center gap-2">
