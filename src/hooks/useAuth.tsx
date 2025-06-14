@@ -19,9 +19,11 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   isLoading: boolean;
+  loading: boolean; // Alias for compatibility
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: () => Promise<void>;
+  hasRole: (roles: string[]) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -52,6 +54,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     const profileData = await fetchProfile(user.id);
     setProfile(profileData);
+  };
+
+  const hasRole = (roles: string[]): boolean => {
+    if (!profile?.role) return false;
+    return roles.includes(profile.role);
   };
 
   useEffect(() => {
@@ -125,9 +132,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       profile,
       isLoading,
+      loading: isLoading, // Alias for compatibility
       signIn,
       signOut,
       updateProfile,
+      hasRole,
     }}>
       {children}
     </AuthContext.Provider>
