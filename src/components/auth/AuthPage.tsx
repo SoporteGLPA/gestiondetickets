@@ -48,7 +48,7 @@ export function AuthPage() {
     }
   };
 
-  const projectName = companySettings?.project_name || 'SoporteTech';
+  const projectName = companySettings?.project_name || 'SoporteGLPA';
   const logoUrl = companySettings?.logo_url;
   const authBackgroundUrl = companySettings?.auth_background_url;
 

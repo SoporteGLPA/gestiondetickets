@@ -43,7 +43,7 @@ export function Sidebar({ className, onToggle }: SidebarProps) {
     profile?.role ? item.roles.includes(profile.role) : false
   );
 
-  const projectName = companySettings?.project_name || 'SoporteTech';
+  const projectName = companySettings?.project_name || 'SoporteGLPA';
   const logoUrl = companySettings?.logo_url;
 
   // Navegación móvil en la parte inferior

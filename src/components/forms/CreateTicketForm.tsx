@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,11 +32,13 @@ interface CreateTicketFormProps {
 
 export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const createTicketMutation = useCreateTicket();
   const { data: departments } = useDepartments();
   const { data: categories } = useCategories();
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>('');
   const { data: departmentCategories } = useDepartmentCategories(selectedDepartmentId);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<TicketFormData>({
     resolver: zodResolver(ticketSchema),
@@ -49,43 +52,72 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
   });
 
   const onSubmit = async (data: TicketFormData) => {
-    if (!user) return;
+    if (!user || isSubmitting) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      console.log('Form data before processing:', data);
 
-    console.log('Form data before processing:', data);
-
-    // Construir el objeto base del ticket SIN category_id
-    const ticketData: any = {
-      title: data.title,
-      description: data.description,
-      priority: data.priority,
-      department_id: data.department_id,
-      customer_id: user.id,
-    };
-
-    // SOLO agregar category_id si hay una categoría válida seleccionada
-    // Verificamos que no sea undefined, no sea "none", y que exista en las categorías disponibles
-    if (data.category_id && data.category_id !== 'none') {
-      // Verificar que la categoría existe en las categorías del departamento o en las categorías generales
-      const categoryExists = 
-        (departmentCategories && departmentCategories.some(cat => cat.id === data.category_id)) ||
-        (categories && categories.some(cat => cat.id === data.category_id));
-      
-      if (categoryExists) {
-        ticketData.category_id = data.category_id;
-        console.log('Adding valid category_id to ticket:', data.category_id);
-      } else {
-        console.log('Category not found, skipping category_id:', data.category_id);
+      // Validar que el departamento existe
+      const departmentExists = departments?.some(dept => dept.id === data.department_id);
+      if (!departmentExists) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "El departamento seleccionado no es válido",
+        });
+        setIsSubmitting(false);
+        return;
       }
-    } else {
-      console.log('No category selected, skipping category_id');
+
+      // Construir el objeto base del ticket
+      const ticketData: any = {
+        title: data.title,
+        description: data.description,
+        priority: data.priority,
+        department_id: data.department_id,
+        customer_id: user.id,
+      };
+
+      // Manejar la categoría si está presente
+      if (data.category_id && data.category_id !== 'none') {
+        // Solo incluir el category_id si parece ser un UUID válido
+        // La validación final se hará en el hook useTickets
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(data.category_id)) {
+          ticketData.category_id = data.category_id;
+          console.log('Category ID a enviar:', data.category_id);
+        } else {
+          console.warn('Formato de ID de categoría inválido, continuando sin categoría');
+        }
+      }
+
+      console.log('Final ticket data to be sent:', ticketData);
+
+      // Usar mutate en lugar de mutateAsync para manejar el estado de carga correctamente
+      await createTicketMutation.mutate(ticketData, {
+        onSuccess: () => {
+          // Resetear el formulario solo si la mutación fue exitosa
+          form.reset({
+            title: '',
+            description: '',
+            priority: 'media',
+            department_id: '',
+            category_id: undefined,
+          });
+          setSelectedDepartmentId('');
+          onOpenChange(false);
+        },
+        onSettled: () => {
+          setIsSubmitting(false);
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error al crear el ticket:', error);
+      setIsSubmitting(false);
+      // No es necesario mostrar un toast aquí ya que useCreateTicket ya maneja el error
     }
-
-    console.log('Final ticket data to be sent:', ticketData);
-
-    await createTicketMutation.mutateAsync(ticketData);
-    form.reset();
-    setSelectedDepartmentId('');
-    onOpenChange(false);
   };
 
   const handleDepartmentChange = (departmentId: string) => {
