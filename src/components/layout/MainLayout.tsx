@@ -2,11 +2,16 @@ import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { NotificationManager } from '@/components/notifications/NotificationManager';
+import { useOptimizedNavigation } from '@/hooks/useOptimizedNavigation';
 import { cn } from '@/lib/utils';
 
 export function MainLayout() {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  
+  // Hook para optimizar navegación y rendimiento
+  useOptimizedNavigation();
 
   useEffect(() => {
     const checkMobile = () => {
@@ -24,6 +29,7 @@ export function MainLayout() {
 
   return (
     <div className="min-h-screen bg-background">
+      <NotificationManager />
       <Sidebar onToggle={handleSidebarToggle} />
       <div className={cn(
         "transition-all duration-300",

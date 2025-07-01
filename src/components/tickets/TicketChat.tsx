@@ -36,8 +36,6 @@ export function TicketChat({ ticketId }: TicketChatProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const channelRef = useRef<any>(null);
-  const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
 
   const { data: comments, isLoading } = useQuery({
     queryKey: ['ticket-comments', ticketId],
