@@ -274,34 +274,39 @@ export function ArticleReader() {
         </CardContent>
       </Card>
 
-      {/* Archivos Adjuntos - Ahora se muestran correctamente */}
+      {/* Archivos Adjuntos */}
       {attachments && attachments.length > 0 && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <Card className="mb-6 border-blue-200">
+          <CardHeader className="bg-blue-50">
+            <CardTitle className="flex items-center gap-2 text-blue-800">
               <Paperclip className="h-5 w-5" />
               Archivos Adjuntos ({attachments.length})
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
+          <CardContent className="p-4">
+            <div className="grid gap-3">
               {attachments.map((attachment) => (
-                <div key={attachment.id} className="flex items-center justify-between p-3 border rounded">
-                  <div className="flex items-center space-x-2">
-                    <Paperclip className="h-4 w-4" />
-                    <span className="text-sm font-medium">{attachment.file_name}</span>
-                    {attachment.file_size && (
-                      <span className="text-xs text-muted-foreground">
-                        ({formatFileSize(attachment.file_size)})
-                      </span>
-                    )}
+                <div key={attachment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-blue-100 rounded">
+                      <Paperclip className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-900">{attachment.file_name}</span>
+                      {attachment.file_size && (
+                        <p className="text-xs text-gray-500">
+                          Tamaño: {formatFileSize(attachment.file_size)}
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <Button 
                     size="sm" 
                     variant="outline"
                     onClick={() => downloadAttachment(attachment)}
+                    className="hover:bg-blue-50"
                   >
-                    <Download className="h-4 w-4 mr-1" />
+                    <Download className="h-4 w-4 mr-2" />
                     Descargar
                   </Button>
                 </div>
@@ -311,33 +316,46 @@ export function ArticleReader() {
         </Card>
       )}
 
-      {/* Enlaces Relacionados - Ahora se muestran correctamente */}
+      {/* Enlaces Relacionados */}
       {links && links.length > 0 && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <Card className="mb-6 border-green-200">
+          <CardHeader className="bg-green-50">
+            <CardTitle className="flex items-center gap-2 text-green-800">
               <ExternalLink className="h-5 w-5" />
               Enlaces Relacionados ({links.length})
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+          <CardContent className="p-4">
+            <div className="grid gap-4">
               {links.map((link) => (
-                <div key={link.id} className="border rounded p-3">
+                <div key={link.id} className="p-4 bg-gray-50 rounded-lg border">
                   <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-sm">{link.title}</h4>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="p-1 bg-green-100 rounded">
+                          <ExternalLink className="h-3 w-3 text-green-600" />
+                        </div>
+                        <h4 className="font-semibold text-sm text-gray-900 truncate">{link.title}</h4>
+                      </div>
                       {link.description && (
-                        <p className="text-xs text-muted-foreground mt-1">{link.description}</p>
+                        <p className="text-sm text-gray-600 mb-2 line-clamp-2">{link.description}</p>
                       )}
-                      <p className="text-xs text-blue-600 mt-1 break-all">{link.url}</p>
+                      <a 
+                        href={link.url}
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 hover:text-blue-800 underline break-all"
+                      >
+                        {link.url}
+                      </a>
                     </div>
                     <Button 
                       size="sm" 
                       variant="outline"
                       onClick={() => window.open(link.url, '_blank')}
+                      className="ml-3 hover:bg-green-50 flex-shrink-0"
                     >
-                      <ExternalLink className="h-3 w-3 mr-1" />
+                      <ExternalLink className="h-4 w-4 mr-1" />
                       Abrir
                     </Button>
                   </div>

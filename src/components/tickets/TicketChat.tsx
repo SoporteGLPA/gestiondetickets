@@ -98,109 +98,46 @@ export function TicketChat({ ticketId }: TicketChatProps) {
   useEffect(() => {
     if (!ticketId) return;
 
-    let reconnectTimeout: NodeJS.Timeout;
-
-    const setupRealtime = async () => {
+    const setupRealtime = () => {
       // Limpiar canal existente si existe
       if (channelRef.current) {
-        try {
-          await supabase.removeChannel(channelRef.current);
-        } catch (error) {
-          console.error('Error al limpiar el canal anterior:', error);
-        } finally {
-          channelRef.current = null;
-        }
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
       }
 
-      try {
-        // Crear nuevo canal
-        const channel = supabase
-          .channel(`ticket-comments-${ticketId}-${Date.now()}`)
-          .on('system' as any, { event: '*' }, (payload: any) => {
-            console.log('Evento del sistema:', payload);
-            
-            // Manejar eventos de desconexión
-            if (payload.event === 'disconnect') {
-              console.log('Desconectado del servidor, intentando reconectar...');
-              attemptReconnect();
-            }
-          })
-          .on(
-            'postgres_changes',
-            {
-              event: 'INSERT',
-              schema: 'public',
-              table: 'ticket_comments',
-              filter: `ticket_id=eq.${ticketId}`,
-            },
-            (payload) => {
-              console.log('Nuevo comentario recibido:', payload);
-              queryClient.invalidateQueries({ 
-                queryKey: ['ticket-comments', ticketId],
-                refetchType: 'active',
-              });
-            }
-          )
-          .subscribe((status, err) => {
-            console.log('Estado de la suscripción:', status);
-            
-            if (status === 'CHANNEL_ERROR') {
-              console.error('Error en el canal de comentarios:', err);
-              attemptReconnect();
-            } else if (status === 'SUBSCRIBED') {
-              console.log('Suscripción a comentarios activa');
-              reconnectAttempts.current = 0; // Reiniciar contador de reconexiones exitosas
-            }
-          });
+      // Crear nuevo canal con un ID único y más simple
+      const channel = supabase
+        .channel(`comments_${ticketId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'ticket_comments',
+            filter: `ticket_id=eq.${ticketId}`,
+          },
+          (payload) => {
+            console.log('Nuevo comentario:', payload);
+            // Invalidar queries para actualizar la lista
+            queryClient.invalidateQueries({ 
+              queryKey: ['ticket-comments', ticketId]
+            });
+          }
+        )
+        .subscribe((status) => {
+          console.log(`Chat realtime status: ${status}`);
+        });
 
-        channelRef.current = channel;
-      } catch (error) {
-        console.error('Error al configurar realtime:', error);
-        attemptReconnect();
-      }
+      channelRef.current = channel;
     };
-
-    const attemptReconnect = () => {
-      if (reconnectAttempts.current >= maxReconnectAttempts) {
-        console.warn('Número máximo de intentos de reconexión alcanzado');
-        return;
-      }
-
-      const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000); // Backoff exponencial con máximo 30s
-      console.log(`Reintentando conexión en ${delay}ms (intento ${reconnectAttempts.current + 1}/${maxReconnectAttempts})`);
-      
-      reconnectTimeout = setTimeout(() => {
-        reconnectAttempts.current += 1;
-        setupRealtime();
-      }, delay);
-    };
-
-    // Verificar periódicamente el estado de la conexión
-    const connectionCheckInterval = setInterval(() => {
-      if (channelRef.current && channelRef.current.state !== 'joined') {
-        console.log('Conexión inactiva, intentando reconectar...');
-        attemptReconnect();
-      }
-    }, 30000); // Verificar cada 30 segundos
 
     setupRealtime();
 
     return () => {
-      clearTimeout(reconnectTimeout);
-      clearInterval(connectionCheckInterval);
-      
-      const cleanup = async () => {
-        if (channelRef.current) {
-          try {
-            await supabase.removeChannel(channelRef.current);
-          } catch (error) {
-            console.error('Error al limpiar el canal:', error);
-          } finally {
-            channelRef.current = null;
-          }
-        }
-      };
-      cleanup();
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     };
   }, [ticketId, queryClient]);
 

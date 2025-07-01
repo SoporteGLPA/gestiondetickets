@@ -9,12 +9,7 @@ export function usePushNotifications() {
   const { toast } = useToast();
   // Usar localStorage para persistir el estado de suscripción
   const [isSupported, setIsSupported] = useState(false);
-  const [isSubscribed, setIsSubscribed] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('pushNotificationsEnabled') === 'true';
-    }
-    return false;
-  });
+  const [isSubscribed, setIsSubscribed] = useState(false);
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
 
   useEffect(() => {
@@ -22,7 +17,7 @@ export function usePushNotifications() {
       setIsSupported(true);
       initializeServiceWorker();
     }
-  }, []);
+  }, [user]);
 
   const initializeServiceWorker = async () => {
     try {
@@ -59,10 +54,16 @@ export function usePushNotifications() {
         
         setIsSubscribed(true);
         localStorage.setItem('pushNotificationsEnabled', 'true');
-      } else if (localStorage.getItem('pushNotificationsEnabled') === 'true') {
-        // Si el estado guardado es true pero no hay suscripción, intentar suscribir de nuevo
-        console.log('Estado guardado indica suscripción activa, pero no se encontró suscripción. Volviendo a suscribir...');
-        await subscribeUser();
+      } else {
+        // Verificar el estado guardado en localStorage
+        const savedState = localStorage.getItem('pushNotificationsEnabled');
+        if (savedState === 'true') {
+          // Si el estado guardado es true pero no hay suscripción, intentar suscribir de nuevo
+          console.log('Estado guardado indica suscripción activa, pero no se encontró suscripción. Volviendo a suscribir...');
+          await subscribeUser();
+        } else {
+          setIsSubscribed(false);
+        }
       }
     } catch (error) {
       console.error('Error al registrar Service Worker:', error);
