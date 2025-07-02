@@ -1,3 +1,4 @@
+
 import { useEffect, useRef } from 'react';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useAuth } from '@/hooks/useAuth';
@@ -6,82 +7,70 @@ import { supabase } from '@/integrations/supabase/client';
 export function NotificationManager() {
   const { user, profile } = useAuth();
   const { showLocalNotification } = usePushNotifications();
-  const isMounted = useRef(true);
-  const ticketChannelRef = useRef<any>(null);
-  const commentChannelRef = useRef<any>(null);
+  const channelsRef = useRef<any[]>([]);
   const isInitialized = useRef(false);
-
-  useEffect(() => {
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (!user || !profile || isInitialized.current) return;
 
     const setupRealtime = async () => {
-      if (!isMounted.current || isInitialized.current) return;
-      
       try {
-        // Mark as initialized to prevent multiple subscriptions
+        // Marcar como inicializado para prevenir múltiples suscripciones
         isInitialized.current = true;
 
-        // Clean up existing channels before creating new ones
-        if (ticketChannelRef.current) {
-          await supabase.removeChannel(ticketChannelRef.current);
-          ticketChannelRef.current = null;
-        }
-        if (commentChannelRef.current) {
-          await supabase.removeChannel(commentChannelRef.current);
-          commentChannelRef.current = null;
-        }
+        // Limpiar canales existentes
+        await cleanupChannels();
 
-        // Escuchar nuevos tickets (para agentes y admins)
+        console.log('Setting up realtime notifications for user:', user.id, 'role:', profile.role);
+
+        // Canal para nuevos tickets (solo agentes y admins)
         if (profile.role === 'admin' || profile.role === 'agent') {
-          ticketChannelRef.current = supabase
-            .channel(`new-tickets-notifications-${user.id}`)
+          const ticketChannel = supabase
+            .channel(`tickets-${user.id}`)
             .on(
               'postgres_changes',
               {
                 event: 'INSERT',
                 schema: 'public',
-                table: 'tickets',
+                table: 'tickets'
               },
               (payload) => {
-                console.log('Nuevo ticket creado:', payload);
+                console.log('Nuevo ticket detectado:', payload);
+                // No notificar tickets propios
                 if (payload.new.customer_id !== user.id) {
                   showLocalNotification(
-                    'Nuevo Ticket Creado',
+                    'Nuevo Ticket',
                     `Ticket #${payload.new.ticket_number}: ${payload.new.title}`,
                     { url: `/tickets/${payload.new.id}` }
                   );
                 }
               }
             )
-            .subscribe((status, err) => {
-              console.log('Tickets notification channel status:', status);
-              if (status === 'CHANNEL_ERROR') {
-                console.error('Error subscribing to tickets channel:', err);
-              }
+            .subscribe((status) => {
+              console.log('Tickets channel status:', status);
             });
+
+          channelsRef.current.push(ticketChannel);
         }
 
-        // Escuchar comentarios en tickets del usuario
-        commentChannelRef.current = supabase
-          .channel(`ticket-comments-notifications-${user.id}`)
+        // Canal para comentarios en tickets
+        const commentsChannel = supabase
+          .channel(`comments-${user.id}`)
           .on(
             'postgres_changes',
             {
               event: 'INSERT',
               schema: 'public',
-              table: 'ticket_comments',
+              table: 'ticket_comments'
             },
             async (payload) => {
-              console.log('Nuevo comentario notificación:', payload);
+              console.log('Nuevo comentario detectado:', payload);
               
+              // No notificar comentarios propios
+              if (payload.new.user_id === user.id) return;
+
               try {
-                // Obtener información del ticket para verificar si es relevante para el usuario
+                // Obtener información del ticket
                 const { data: ticket } = await supabase
                   .from('tickets')
                   .select('customer_id, ticket_number, title, assignee_id')
@@ -90,78 +79,65 @@ export function NotificationManager() {
 
                 if (!ticket) return;
 
-                // No notificar comentarios propios
-                if (payload.new.user_id === user.id) return;
+                let shouldNotify = false;
 
-                // Si es un usuario normal, solo notificar si es su ticket
                 if (profile.role === 'user') {
-                  if (ticket.customer_id === user.id) {
-                    showLocalNotification(
-                      'Nueva Respuesta',
-                      `Respuesta en ticket #${ticket.ticket_number}`,
-                      { url: `/tickets/${payload.new.ticket_id}` }
-                    );
-                  }
-                  return;
+                  // Usuarios: solo notificar si es su ticket
+                  shouldNotify = ticket.customer_id === user.id;
+                } else if (profile.role === 'agent') {
+                  // Agentes: notificar si están asignados al ticket
+                  shouldNotify = ticket.assignee_id === user.id;
+                } else if (profile.role === 'admin') {
+                  // Admins: notificar todos los comentarios
+                  shouldNotify = true;
                 }
 
-                // Si es agente/admin, notificar comentarios relevantes
-                if (profile.role === 'agent' || profile.role === 'admin') {
-                  const isAssigned = ticket.assignee_id === user.id;
-                  
-                  if (isAssigned || profile.role === 'admin') {
-                    const { data: commenter } = await supabase
-                      .from('profiles')
-                      .select('role, full_name')
-                      .eq('id', payload.new.user_id)
-                      .single();
+                if (shouldNotify) {
+                  const { data: commenter } = await supabase
+                    .from('profiles')
+                    .select('full_name')
+                    .eq('id', payload.new.user_id)
+                    .single();
 
-                    showLocalNotification(
-                      'Nuevo Comentario',
-                      `${commenter?.full_name || 'Usuario'} comentó en ticket #${ticket.ticket_number}`,
-                      { url: `/tickets/${payload.new.ticket_id}` }
-                    );
-                  }
+                  showLocalNotification(
+                    'Nuevo Comentario',
+                    `${commenter?.full_name || 'Usuario'} comentó en ticket #${ticket.ticket_number}`,
+                    { url: `/tickets/${payload.new.ticket_id}` }
+                  );
                 }
               } catch (error) {
-                console.error('Error processing comment notification:', error);
+                console.error('Error procesando notificación de comentario:', error);
               }
             }
           )
-          .subscribe((status, err) => {
-            console.log('Comments notification channel status:', status);
-            if (status === 'CHANNEL_ERROR') {
-              console.error('Error subscribing to comments channel:', err);
-            }
+          .subscribe((status) => {
+            console.log('Comments channel status:', status);
           });
+
+        channelsRef.current.push(commentsChannel);
+
       } catch (error) {
-        console.error('Error in setupRealtime:', error);
-        isInitialized.current = false; // Reset on error
+        console.error('Error configurando realtime:', error);
+        isInitialized.current = false;
       }
     };
 
-    setupRealtime().catch(error => {
-      console.error('Error setting up realtime subscriptions:', error);
-      isInitialized.current = false; // Reset on error
-    });
+    const cleanupChannels = async () => {
+      for (const channel of channelsRef.current) {
+        try {
+          await supabase.removeChannel(channel);
+        } catch (error) {
+          console.error('Error removiendo canal:', error);
+        }
+      }
+      channelsRef.current = [];
+    };
+
+    setupRealtime();
 
     return () => {
-      const cleanup = async () => {
-        try {
-          isInitialized.current = false;
-          if (ticketChannelRef.current) {
-            await supabase.removeChannel(ticketChannelRef.current);
-            ticketChannelRef.current = null;
-          }
-          if (commentChannelRef.current) {
-            await supabase.removeChannel(commentChannelRef.current);
-            commentChannelRef.current = null;
-          }
-        } catch (error) {
-          console.error('Error cleaning up channels:', error);
-        }
-      };
-      cleanup();
+      cleanupChannels();
+      isInitialized.current = false;
     };
   }, [user, profile, showLocalNotification]);
 

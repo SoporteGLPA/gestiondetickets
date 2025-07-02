@@ -36,6 +36,7 @@ export function TicketChat({ ticketId }: TicketChatProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const channelRef = useRef<any>(null);
+  const isSubscribedRef = useRef(false);
 
   const { data: comments, isLoading } = useQuery({
     queryKey: ['ticket-comments', ticketId],
@@ -84,6 +85,7 @@ export function TicketChat({ ticketId }: TicketChatProps) {
       });
     },
     onError: (error) => {
+      console.error('Error adding comment:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -94,39 +96,48 @@ export function TicketChat({ ticketId }: TicketChatProps) {
 
   // Configurar realtime para comentarios
   useEffect(() => {
-    if (!ticketId) return;
+    if (!ticketId || isSubscribedRef.current) return;
 
     const setupRealtime = () => {
-      // Limpiar canal existente si existe
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
+      try {
+        // Limpiar canal existente
+        if (channelRef.current) {
+          supabase.removeChannel(channelRef.current);
+          channelRef.current = null;
+        }
+
+        console.log('Setting up realtime for ticket chat:', ticketId);
+
+        // Crear nuevo canal
+        const channel = supabase
+          .channel(`ticket_chat_${ticketId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'ticket_comments',
+              filter: `ticket_id=eq.${ticketId}`
+            },
+            (payload) => {
+              console.log('Nuevo comentario en chat:', payload);
+              // Invalidar queries para actualizar la lista
+              queryClient.invalidateQueries({ 
+                queryKey: ['ticket-comments', ticketId]
+              });
+            }
+          )
+          .subscribe((status) => {
+            console.log(`Chat realtime status: ${status}`);
+            if (status === 'SUBSCRIBED') {
+              isSubscribedRef.current = true;
+            }
+          });
+
+        channelRef.current = channel;
+      } catch (error) {
+        console.error('Error setting up chat realtime:', error);
       }
-
-      // Crear nuevo canal con un ID único y más simple
-      const channel = supabase
-        .channel(`comments_${ticketId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'ticket_comments',
-            filter: `ticket_id=eq.${ticketId}`,
-          },
-          (payload) => {
-            console.log('Nuevo comentario:', payload);
-            // Invalidar queries para actualizar la lista
-            queryClient.invalidateQueries({ 
-              queryKey: ['ticket-comments', ticketId]
-            });
-          }
-        )
-        .subscribe((status) => {
-          console.log(`Chat realtime status: ${status}`);
-        });
-
-      channelRef.current = channel;
     };
 
     setupRealtime();
@@ -136,6 +147,7 @@ export function TicketChat({ ticketId }: TicketChatProps) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
+      isSubscribedRef.current = false;
     };
   }, [ticketId, queryClient]);
 
