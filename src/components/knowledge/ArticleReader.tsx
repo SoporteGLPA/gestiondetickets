@@ -1,400 +1,78 @@
 
-import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Star, Eye, ThumbsUp, ThumbsDown, Paperclip, ExternalLink, Download } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { Textarea } from '@/components/ui/textarea';
+import { Plus, FileText, Image, FileX } from 'lucide-react';
 import { useState } from 'react';
 
 export function ArticleReader() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [userRating, setUserRating] = useState<number | null>(null);
+  const [description, setDescription] = useState('');
 
-  const { data: article, isLoading } = useQuery({
-    queryKey: ['article', id],
-    queryFn: async () => {
-      if (!id) throw new Error('No article ID provided');
-      
-      const { data, error } = await supabase
-        .from('knowledge_articles')
-        .select(`
-          *,
-          profiles(full_name)
-        `)
-        .eq('id', id)
-        .eq('is_published', true)
-        .single();
-
-      if (error) throw error;
-
-      // Increment view count
-      await supabase
-        .from('knowledge_articles')
-        .update({ views: (data.views || 0) + 1 })
-        .eq('id', id);
-
-      return data;
-    },
-    enabled: !!id,
-  });
-
-  // Get article attachments - Corregido para mostrar adjuntos
-  const { data: attachments } = useQuery({
-    queryKey: ['article-attachments', id],
-    queryFn: async () => {
-      if (!id) return [];
-      
-      const { data, error } = await supabase
-        .from('article_attachments')
-        .select('*')
-        .eq('article_id', id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.log('No attachments found or error:', error);
-        return [];
-      }
-      return data || [];
-    },
-    enabled: !!id,
-  });
-
-  // Get article links - Corregido para mostrar enlaces
-  const { data: links } = useQuery({
-    queryKey: ['article-links', id],
-    queryFn: async () => {
-      if (!id) return [];
-      
-      const { data, error } = await supabase
-        .from('article_links')
-        .select('*')
-        .eq('article_id', id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.log('No links found or error:', error);
-        return [];
-      }
-      return data || [];
-    },
-    enabled: !!id,
-  });
-
-  // Get user's existing rating
-  useQuery({
-    queryKey: ['user-rating', id, user?.id],
-    queryFn: async () => {
-      if (!id || !user) return null;
-      
-      const { data, error } = await supabase
-        .from('article_ratings')
-        .select('rating')
-        .eq('article_id', id)
-        .eq('user_id', user.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') throw error;
-      
-      if (data) {
-        setUserRating(data.rating);
-      }
-      
-      return data;
-    },
-    enabled: !!id && !!user,
-  });
-
-  const rateArticleMutation = useMutation({
-    mutationFn: async (rating: number) => {
-      if (!id || !user) throw new Error('Missing article ID or user');
-
-      const { error } = await supabase
-        .from('article_ratings')
-        .upsert({
-          article_id: id,
-          user_id: user.id,
-          rating: rating,
-        });
-
-      if (error) throw error;
-    },
-    onSuccess: (_, rating) => {
-      setUserRating(rating);
-      queryClient.invalidateQueries({ queryKey: ['article', id] });
-      toast({
-        title: "Calificación enviada",
-        description: "Gracias por calificar este artículo",
-      });
-    },
-    onError: () => {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo enviar la calificación",
-      });
-    },
-  });
-
-  const getCategoryLabel = (category: string) => {
-    const categories = {
-      'email': 'Email',
-      'red': 'Red',
-      'hardware': 'Hardware',
-      'software': 'Software',
-      'seguridad': 'Seguridad'
-    };
-    return categories[category as keyof typeof categories] || category;
-  };
-
-  const getCategoryColor = (category: string) => {
-    const colors = {
-      'email': 'bg-blue-100 text-blue-800',
-      'red': 'bg-green-100 text-green-800',
-      'hardware': 'bg-orange-100 text-orange-800',
-      'software': 'bg-purple-100 text-purple-800',
-      'seguridad': 'bg-red-100 text-red-800'
-    };
-    return colors[category as keyof typeof colors] || 'bg-gray-100 text-gray-800';
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
-  const downloadAttachment = (attachment: any) => {
-    try {
-      // Create download link from base64 data or file path
-      const link = document.createElement('a');
-      link.href = attachment.file_path;
-      link.download = attachment.file_name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      toast({
-        title: "Descarga iniciada",
-        description: `Descargando ${attachment.file_name}...`,
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo descargar el archivo",
-      });
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  if (!article) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold">Artículo no encontrado</h1>
-          <Button onClick={() => navigate('/knowledge')} className="mt-4">
-            Volver a la base de conocimientos
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  const mockAttachments = [
+    { id: 1, name: 'imagen-ejemplo.jpg', type: 'image', icon: Image },
+    { id: 2, name: 'documento-ejemplo.pdf', type: 'pdf', icon: FileText },
+    { id: 3, name: 'archivo-ejemplo.docx', type: 'document', icon: FileX }
+  ];
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-4xl">
-      <div className="mb-6">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => navigate('/knowledge')}
-          className="mb-4"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Volver
-        </Button>
-        
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          <Badge className={getCategoryColor(article.category)}>
-            {getCategoryLabel(article.category)}
-          </Badge>
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <Eye className="h-4 w-4" />
-            <span>{article.views} vistas</span>
-          </div>
-          {article.rating && (
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-              <span>{article.rating} ({article.votes_count} votos)</span>
-            </div>
-          )}
+    <div className="min-h-screen bg-gray-50 p-8">
+      <div className="max-w-4xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="text-center">
+          <h1 className="text-3xl font-semibold text-blue-900">Gestión de Documentos</h1>
         </div>
 
-        <h1 className="text-3xl font-bold mb-2">{article.title}</h1>
-        
-        {article.summary && (
-          <p className="text-lg text-muted-foreground mb-4">{article.summary}</p>
-        )}
-        
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <span>Por {article.profiles?.full_name}</span>
-          <span>
-            {formatDistanceToNow(new Date(article.created_at), { 
-              addSuffix: true, 
-              locale: es 
-            })}
-          </span>
-        </div>
-      </div>
-
-      <Card className="mb-6">
-        <CardContent className="p-6">
-          <div 
-            className="prose prose-sm max-w-none"
-            dangerouslySetInnerHTML={{ __html: article.content.replace(/\n/g, '<br>') }}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Archivos Adjuntos */}
-      {attachments && attachments.length > 0 && (
-        <Card className="mb-6 border-blue-200">
-          <CardHeader className="bg-blue-50">
-            <CardTitle className="flex items-center gap-2 text-blue-800">
-              <Paperclip className="h-5 w-5" />
-              Archivos Adjuntos ({attachments.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="grid gap-3">
-              {attachments.map((attachment) => (
-                <div key={attachment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-blue-100 rounded">
-                      <Paperclip className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <span className="text-sm font-medium text-gray-900">{attachment.file_name}</span>
-                      {attachment.file_size && (
-                        <p className="text-xs text-gray-500">
-                          Tamaño: {formatFileSize(attachment.file_size)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => downloadAttachment(attachment)}
-                    className="hover:bg-blue-50"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Descargar
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Enlaces Relacionados */}
-      {links && links.length > 0 && (
-        <Card className="mb-6 border-green-200">
-          <CardHeader className="bg-green-50">
-            <CardTitle className="flex items-center gap-2 text-green-800">
-              <ExternalLink className="h-5 w-5" />
-              Enlaces Relacionados ({links.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4">
-            <div className="grid gap-4">
-              {links.map((link) => (
-                <div key={link.id} className="p-4 bg-gray-50 rounded-lg border">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="p-1 bg-green-100 rounded">
-                          <ExternalLink className="h-3 w-3 text-green-600" />
-                        </div>
-                        <h4 className="font-semibold text-sm text-gray-900 truncate">{link.title}</h4>
-                      </div>
-                      {link.description && (
-                        <p className="text-sm text-gray-600 mb-2 line-clamp-2">{link.description}</p>
-                      )}
-                      <a 
-                        href={link.url}
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-xs text-blue-600 hover:text-blue-800 underline break-all"
-                      >
-                        {link.url}
-                      </a>
-                    </div>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => window.open(link.url, '_blank')}
-                      className="ml-3 hover:bg-green-50 flex-shrink-0"
-                    >
-                      <ExternalLink className="h-4 w-4 mr-1" />
-                      Abrir
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {user && (
-        <Card>
-          <CardHeader>
-            <CardTitle>¿Te fue útil este artículo?</CardTitle>
+        {/* Description Section */}
+        <Card className="shadow-sm border-gray-200">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-lg font-medium text-gray-800">Descripción</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-2">
-              <Button
-                variant={userRating === 5 ? "default" : "outline"}
-                size="sm"
-                onClick={() => rateArticleMutation.mutate(5)}
-                disabled={rateArticleMutation.isPending}
-              >
-                <ThumbsUp className="h-4 w-4 mr-2" />
-                Útil
+            <Textarea
+              placeholder="Ingrese la descripción del documento..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="min-h-[120px] bg-white border-gray-200 focus:border-blue-300 focus:ring-blue-100 resize-none"
+            />
+          </CardContent>
+        </Card>
+
+        {/* Attachments Section */}
+        <Card className="shadow-sm border-gray-200">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg font-medium text-gray-800">Archivos Adjuntos</CardTitle>
+              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Agregar
               </Button>
-              <Button
-                variant={userRating === 1 ? "default" : "outline"}
-                size="sm"
-                onClick={() => rateArticleMutation.mutate(1)}
-                disabled={rateArticleMutation.isPending}
-              >
-                <ThumbsDown className="h-4 w-4 mr-2" />
-                No útil
-              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-6">
+              {mockAttachments.map((attachment) => (
+                <div key={attachment.id} className="group">
+                  <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-all duration-200 cursor-pointer">
+                    <div className="flex flex-col items-center space-y-3">
+                      <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <attachment.icon className="h-6 w-6 text-gray-600" />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-sm font-medium text-gray-700 truncate w-full">
+                          {attachment.name}
+                        </p>
+                        <p className="text-xs text-gray-500 capitalize mt-1">
+                          {attachment.type}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
-      )}
+      </div>
     </div>
   );
 }

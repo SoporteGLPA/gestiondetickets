@@ -1,8 +1,8 @@
 
-import { KnowledgeBase } from '@/components/knowledge/KnowledgeBase';
+import { ArticleReader } from '@/components/knowledge/ArticleReader';
 
 const Knowledge = () => {
-  return <KnowledgeBase />;
+  return <ArticleReader />;
 };
 
 export default Knowledge;
