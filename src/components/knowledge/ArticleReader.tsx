@@ -4,10 +4,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { useKnowledgeArticle, useArticleAttachments, useArticleLinks } from '@/hooks/useKnowledge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Star, Eye, ThumbsUp, ThumbsDown, Paperclip, ExternalLink, Download } from 'lucide-react';
+import { ArrowLeft, Star, Eye, ThumbsUp, ThumbsDown, Paperclip, ExternalLink, Download, File, Image, FileText } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useState } from 'react';
@@ -20,77 +21,27 @@ export function ArticleReader() {
   const queryClient = useQueryClient();
   const [userRating, setUserRating] = useState<number | null>(null);
 
-  const { data: article, isLoading } = useQuery({
-    queryKey: ['article', id],
+  const { data: article, isLoading } = useKnowledgeArticle(id || '');
+  const { data: attachments } = useArticleAttachments(id || '');
+  const { data: links } = useArticleLinks(id || '');
+
+  // Incrementar contador de vistas
+  useQuery({
+    queryKey: ['increment-views', id],
     queryFn: async () => {
-      if (!id) throw new Error('No article ID provided');
+      if (!id || !article) return null;
       
-      const { data, error } = await supabase
-        .from('knowledge_articles')
-        .select(`
-          *,
-          profiles(full_name)
-        `)
-        .eq('id', id)
-        .eq('is_published', true)
-        .single();
-
-      if (error) throw error;
-
-      // Increment view count
       await supabase
         .from('knowledge_articles')
-        .update({ views: (data.views || 0) + 1 })
+        .update({ views: (article.views || 0) + 1 })
         .eq('id', id);
-
-      return data;
-    },
-    enabled: !!id,
-  });
-
-  // Get article attachments - Corregido para mostrar adjuntos
-  const { data: attachments } = useQuery({
-    queryKey: ['article-attachments', id],
-    queryFn: async () => {
-      if (!id) return [];
       
-      const { data, error } = await supabase
-        .from('article_attachments')
-        .select('*')
-        .eq('article_id', id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.log('No attachments found or error:', error);
-        return [];
-      }
-      return data || [];
+      return true;
     },
-    enabled: !!id,
+    enabled: !!id && !!article,
   });
 
-  // Get article links - Corregido para mostrar enlaces
-  const { data: links } = useQuery({
-    queryKey: ['article-links', id],
-    queryFn: async () => {
-      if (!id) return [];
-      
-      const { data, error } = await supabase
-        .from('article_links')
-        .select('*')
-        .eq('article_id', id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.log('No links found or error:', error);
-        return [];
-      }
-      return data || [];
-    },
-    enabled: !!id,
-  });
-
-  // Get user's existing rating
+  // Obtener calificación del usuario
   useQuery({
     queryKey: ['user-rating', id, user?.id],
     queryFn: async () => {
@@ -130,7 +81,7 @@ export function ArticleReader() {
     },
     onSuccess: (_, rating) => {
       setUserRating(rating);
-      queryClient.invalidateQueries({ queryKey: ['article', id] });
+      queryClient.invalidateQueries({ queryKey: ['knowledge-article', id] });
       toast({
         title: "Calificación enviada",
         description: "Gracias por calificar este artículo",
@@ -175,21 +126,39 @@ export function ArticleReader() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const downloadAttachment = (attachment: any) => {
+  const getFileIcon = (fileName: string) => {
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) {
+      return <Image className="h-4 w-4 text-blue-600" />;
+    } else if (['pdf'].includes(ext || '')) {
+      return <FileText className="h-4 w-4 text-red-600" />;
+    }
+    return <File className="h-4 w-4 text-gray-600" />;
+  };
+
+  const downloadAttachment = async (attachment: any) => {
     try {
-      // Create download link from base64 data or file path
+      const { data, error } = await supabase.storage
+        .from('company-assets')
+        .download(attachment.file_path);
+      
+      if (error) throw error;
+      
+      const url = URL.createObjectURL(data);
       const link = document.createElement('a');
-      link.href = attachment.file_path;
+      link.href = url;
       link.download = attachment.file_name;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      URL.revokeObjectURL(url);
       
       toast({
         title: "Descarga iniciada",
         description: `Descargando ${attachment.file_name}...`,
       });
     } catch (error) {
+      console.error('Error downloading file:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -268,7 +237,7 @@ export function ArticleReader() {
       <Card className="mb-6">
         <CardContent className="p-6">
           <div 
-            className="prose prose-sm max-w-none"
+            className="prose prose-sm max-w-none whitespace-pre-wrap"
             dangerouslySetInnerHTML={{ __html: article.content.replace(/\n/g, '<br>') }}
           />
         </CardContent>
@@ -289,7 +258,7 @@ export function ArticleReader() {
                 <div key={attachment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
                   <div className="flex items-center space-x-3">
                     <div className="p-2 bg-blue-100 rounded">
-                      <Paperclip className="h-4 w-4 text-blue-600" />
+                      {getFileIcon(attachment.file_name)}
                     </div>
                     <div>
                       <span className="text-sm font-medium text-gray-900">{attachment.file_name}</span>
