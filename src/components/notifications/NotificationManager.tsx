@@ -1,4 +1,3 @@
-
 import { useEffect, useRef } from 'react';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useAuth } from '@/hooks/useAuth';
@@ -8,6 +7,8 @@ export function NotificationManager() {
   const { user, profile } = useAuth();
   const { showLocalNotification } = usePushNotifications();
   const isMounted = useRef(true);
+  const ticketChannelRef = useRef<any>(null);
+  const commentChannelRef = useRef<any>(null);
 
   useEffect(() => {
     return () => {
@@ -18,16 +19,23 @@ export function NotificationManager() {
   useEffect(() => {
     if (!user || !profile) return;
 
-    let ticketChannel: any;
-    let commentChannel: any;
-
     const setupRealtime = async () => {
       if (!isMounted.current) return;
       
       try {
+        // Clean up existing channels before creating new ones
+        if (ticketChannelRef.current) {
+          await supabase.removeChannel(ticketChannelRef.current);
+          ticketChannelRef.current = null;
+        }
+        if (commentChannelRef.current) {
+          await supabase.removeChannel(commentChannelRef.current);
+          commentChannelRef.current = null;
+        }
+
         // Escuchar nuevos tickets (para agentes y admins)
         if (profile.role === 'admin' || profile.role === 'agent') {
-          ticketChannel = supabase
+          ticketChannelRef.current = supabase
             .channel('new-tickets-notifications')
             .on(
               'postgres_changes',
@@ -56,7 +64,7 @@ export function NotificationManager() {
         }
 
         // Escuchar comentarios en tickets del usuario
-        commentChannel = supabase
+        commentChannelRef.current = supabase
           .channel('ticket-comments-notifications')
           .on(
             'postgres_changes',
@@ -134,11 +142,13 @@ export function NotificationManager() {
     return () => {
       const cleanup = async () => {
         try {
-          if (ticketChannel) {
-            await supabase.removeChannel(ticketChannel);
+          if (ticketChannelRef.current) {
+            await supabase.removeChannel(ticketChannelRef.current);
+            ticketChannelRef.current = null;
           }
-          if (commentChannel) {
-            await supabase.removeChannel(commentChannel);
+          if (commentChannelRef.current) {
+            await supabase.removeChannel(commentChannelRef.current);
+            commentChannelRef.current = null;
           }
         } catch (error) {
           console.error('Error cleaning up channels:', error);

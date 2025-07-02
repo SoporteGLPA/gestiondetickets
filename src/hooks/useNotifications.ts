@@ -1,4 +1,3 @@
-
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -44,7 +43,7 @@ export function useNotifications() {
             created_at,
             status,
             customer_id,
-            profiles!inner(full_name)
+            profiles_customer:profiles!customer_id(full_name)
           `)
           .in('status', ['abierto', 'en_progreso'])
           .order('created_at', { ascending: false });
