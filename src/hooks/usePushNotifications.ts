@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,9 +17,16 @@ export function usePushNotifications() {
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
 
   useEffect(() => {
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
+    // Check if we're in StackBlitz environment
+    const isStackBlitz = window.location.hostname.includes('stackblitz') || 
+                        window.location.hostname.includes('webcontainer');
+    
+    if (!isStackBlitz && 'serviceWorker' in navigator && 'PushManager' in window) {
       setIsSupported(true);
       initializeServiceWorker();
+    } else if (isStackBlitz) {
+      console.log('Service Workers not supported in StackBlitz environment');
+      setIsSupported(false);
     }
   }, [user]);
 
@@ -241,7 +247,7 @@ export function usePushNotifications() {
     if (Notification.permission !== 'granted') return;
 
     // Usar Service Worker para mostrar notificaciones cuando sea posible
-    if ('serviceWorker' in navigator) {
+    if ('serviceWorker' in navigator && isSupported) {
       try {
         const registration = await navigator.serviceWorker.ready;
         await registration.showNotification(title, {

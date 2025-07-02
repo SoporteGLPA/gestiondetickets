@@ -9,6 +9,7 @@ export function NotificationManager() {
   const isMounted = useRef(true);
   const ticketChannelRef = useRef<any>(null);
   const commentChannelRef = useRef<any>(null);
+  const isInitialized = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -17,12 +18,15 @@ export function NotificationManager() {
   }, []);
 
   useEffect(() => {
-    if (!user || !profile) return;
+    if (!user || !profile || isInitialized.current) return;
 
     const setupRealtime = async () => {
-      if (!isMounted.current) return;
+      if (!isMounted.current || isInitialized.current) return;
       
       try {
+        // Mark as initialized to prevent multiple subscriptions
+        isInitialized.current = true;
+
         // Clean up existing channels before creating new ones
         if (ticketChannelRef.current) {
           await supabase.removeChannel(ticketChannelRef.current);
@@ -36,7 +40,7 @@ export function NotificationManager() {
         // Escuchar nuevos tickets (para agentes y admins)
         if (profile.role === 'admin' || profile.role === 'agent') {
           ticketChannelRef.current = supabase
-            .channel('new-tickets-notifications')
+            .channel(`new-tickets-notifications-${user.id}`)
             .on(
               'postgres_changes',
               {
@@ -65,7 +69,7 @@ export function NotificationManager() {
 
         // Escuchar comentarios en tickets del usuario
         commentChannelRef.current = supabase
-          .channel('ticket-comments-notifications')
+          .channel(`ticket-comments-notifications-${user.id}`)
           .on(
             'postgres_changes',
             {
@@ -132,16 +136,19 @@ export function NotificationManager() {
           });
       } catch (error) {
         console.error('Error in setupRealtime:', error);
+        isInitialized.current = false; // Reset on error
       }
     };
 
     setupRealtime().catch(error => {
       console.error('Error setting up realtime subscriptions:', error);
+      isInitialized.current = false; // Reset on error
     });
 
     return () => {
       const cleanup = async () => {
         try {
+          isInitialized.current = false;
           if (ticketChannelRef.current) {
             await supabase.removeChannel(ticketChannelRef.current);
             ticketChannelRef.current = null;

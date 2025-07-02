@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,7 +8,6 @@ import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { AuthPage } from "./components/auth/AuthPage";
 import { MainLayout } from "./components/layout/MainLayout";
 import { ArticleReader } from "./components/knowledge/ArticleReader";
-import { NotificationManager } from "./components/notifications/NotificationManager";
 import Index from "./pages/Index";
 import Tickets from "./pages/Tickets";
 import Knowledge from "./pages/Knowledge";
@@ -33,7 +31,6 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <NotificationManager />
           <Routes>
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/" element={
