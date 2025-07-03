@@ -20,6 +20,14 @@ interface TicketStatusDropdownProps {
   currentStatus: string;
 }
 
+interface StatusOption {
+  value: string;
+  label: string;
+  color: string;
+  isCustom?: boolean;
+  isClosed?: boolean;
+}
+
 export function TicketStatusDropdown({ ticketId, currentStatus }: TicketStatusDropdownProps) {
   const { hasRole } = useAuth();
   const { toast } = useToast();
@@ -27,16 +35,16 @@ export function TicketStatusDropdown({ ticketId, currentStatus }: TicketStatusDr
   const { data: customStatuses } = useTicketStatuses();
 
   // Estados por defecto del sistema
-  const defaultStatuses = [
-    { value: 'abierto', label: 'Abierto', color: '#ef4444' },
-    { value: 'en_progreso', label: 'En Progreso', color: '#f59e0b' },
-    { value: 'pendiente', label: 'Pendiente', color: '#8b5cf6' },
-    { value: 'resuelto', label: 'Resuelto', color: '#10b981' },
-    { value: 'cerrado', label: 'Cerrado', color: '#6b7280' },
+  const defaultStatuses: StatusOption[] = [
+    { value: 'abierto', label: 'Abierto', color: '#ef4444', isClosed: false },
+    { value: 'en_progreso', label: 'En Progreso', color: '#f59e0b', isClosed: false },
+    { value: 'pendiente', label: 'Pendiente', color: '#8b5cf6', isClosed: false },
+    { value: 'resuelto', label: 'Resuelto', color: '#10b981', isClosed: true },
+    { value: 'cerrado', label: 'Cerrado', color: '#6b7280', isClosed: true },
   ];
 
   // Combinar estados por defecto con estados personalizados
-  const allStatuses = [
+  const allStatuses: StatusOption[] = [
     ...defaultStatuses,
     ...(customStatuses?.map(status => ({
       value: status.name.toLowerCase().replace(/\s+/g, '_'),
