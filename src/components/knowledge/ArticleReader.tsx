@@ -1,4 +1,3 @@
-
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Star, Eye, ThumbsUp, ThumbsDown, Paperclip, ExternalLink, Download, File, Image, FileText } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export function ArticleReader() {
   const { id } = useParams();
@@ -20,10 +19,40 @@ export function ArticleReader() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [userRating, setUserRating] = useState<number | null>(null);
+  const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
 
   const { data: article, isLoading } = useKnowledgeArticle(id || '');
   const { data: attachments } = useArticleAttachments(id || '');
   const { data: links } = useArticleLinks(id || '');
+
+  // Generar URLs de imágenes para previsualización
+  useEffect(() => {
+    if (attachments) {
+      const generateImageUrls = async () => {
+        const urls: Record<string, string> = {};
+        
+        for (const attachment of attachments) {
+          if (isImageFile(attachment.file_name)) {
+            try {
+              const { data } = await supabase.storage
+                .from('company-assets')
+                .createSignedUrl(attachment.file_path, 3600); // 1 hora de validez
+              
+              if (data?.signedUrl) {
+                urls[attachment.id] = data.signedUrl;
+              }
+            } catch (error) {
+              console.error('Error generating signed URL:', error);
+            }
+          }
+        }
+        
+        setImageUrls(urls);
+      };
+
+      generateImageUrls();
+    }
+  }, [attachments]);
 
   // Incrementar contador de vistas
   useQuery({
@@ -126,9 +155,14 @@ export function ArticleReader() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const isImageFile = (fileName: string) => {
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext || '');
+  };
+
   const getFileIcon = (fileName: string) => {
     const ext = fileName.split('.').pop()?.toLowerCase();
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) {
+    if (isImageFile(fileName)) {
       return <Image className="h-4 w-4 text-blue-600" />;
     } else if (['pdf'].includes(ext || '')) {
       return <FileText className="h-4 w-4 text-red-600" />;
@@ -253,31 +287,44 @@ export function ArticleReader() {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4">
-            <div className="grid gap-3">
+            <div className="grid gap-4">
               {attachments.map((attachment) => (
-                <div key={attachment.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-blue-100 rounded">
-                      {getFileIcon(attachment.file_name)}
+                <div key={attachment.id} className="p-4 bg-gray-50 rounded-lg border">
+                  {isImageFile(attachment.file_name) && imageUrls[attachment.id] ? (
+                    <div className="mb-4">
+                      <img 
+                        src={imageUrls[attachment.id]} 
+                        alt={attachment.file_name}
+                        className="max-w-full max-h-64 object-contain rounded-lg border"
+                        loading="lazy"
+                      />
                     </div>
-                    <div>
-                      <span className="text-sm font-medium text-gray-900">{attachment.file_name}</span>
-                      {attachment.file_size && (
-                        <p className="text-xs text-gray-500">
-                          Tamaño: {formatFileSize(attachment.file_size)}
-                        </p>
-                      )}
+                  ) : null}
+                  
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-blue-100 rounded">
+                        {getFileIcon(attachment.file_name)}
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-gray-900">{attachment.file_name}</span>
+                        {attachment.file_size && (
+                          <p className="text-xs text-gray-500">
+                            Tamaño: {formatFileSize(attachment.file_size)}
+                          </p>
+                        )}
+                      </div>
                     </div>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => downloadAttachment(attachment)}
+                      className="hover:bg-blue-50"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Descargar
+                    </Button>
                   </div>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => downloadAttachment(attachment)}
-                    className="hover:bg-blue-50"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Descargar
-                  </Button>
                 </div>
               ))}
             </div>
@@ -321,7 +368,7 @@ export function ArticleReader() {
                     <Button 
                       size="sm" 
                       variant="outline"
-                      onClick={() => window.open(link.url, '_blank')}
+                      onClick={() => window.open(link.url, '_blank', 'noopener,noreferrer')}
                       className="ml-3 hover:bg-green-50 flex-shrink-0"
                     >
                       <ExternalLink className="h-4 w-4 mr-1" />
