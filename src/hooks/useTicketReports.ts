@@ -1,6 +1,10 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
+
+type TicketStatus = Database['public']['Enums']['ticket_status'];
+type TicketPriority = Database['public']['Enums']['ticket_priority'];
 
 export interface TicketReportData {
   id: string;
@@ -62,10 +66,10 @@ export function useTicketReports(filters: ReportFilters) {
         query = query.eq('category_id', filters.category_id);
       }
       if (filters.status) {
-        query = query.eq('status', filters.status);
+        query = query.eq('status', filters.status as TicketStatus);
       }
       if (filters.priority) {
-        query = query.eq('priority', filters.priority);
+        query = query.eq('priority', filters.priority as TicketPriority);
       }
       if (filters.date_from) {
         query = query.gte('created_at', filters.date_from);
