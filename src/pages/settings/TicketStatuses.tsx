@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Plus, FileText, Edit, Trash2 } from 'lucide-react';
+import { Plus, FileText, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useForm } from 'react-hook-form';
@@ -97,7 +97,7 @@ const TicketStatuses = () => {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Estados de Ticket Personalizados
+              Estados de Ticket
             </CardTitle>
             <Dialog open={showForm} onOpenChange={setShowForm}>
               <DialogTrigger asChild>
@@ -266,37 +266,8 @@ const TicketStatuses = () => {
               </div>
             ))
           ) : (
-            <p className="text-muted-foreground">No hay estados personalizados creados aún.</p>
+            <p className="text-muted-foreground">No hay estados creados aún.</p>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Información sobre estados por defecto */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Estados por Defecto del Sistema</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground mb-4">
-            El sistema incluye estos estados por defecto que siempre estarán disponibles:
-          </p>
-          <div className="grid gap-2">
-            {[
-              { name: 'Abierto', color: '#ef4444' },
-              { name: 'En Progreso', color: '#f59e0b' },
-              { name: 'Pendiente', color: '#8b5cf6' },
-              { name: 'Resuelto', color: '#10b981' },
-              { name: 'Cerrado', color: '#6b7280' },
-            ].map((status) => (
-              <div key={status.name} className="flex items-center gap-3 p-2">
-                <div
-                  className="w-4 h-4 rounded-full"
-                  style={{ backgroundColor: status.color }}
-                />
-                <span className="font-medium">{status.name}</span>
-              </div>
-            ))}
-          </div>
         </CardContent>
       </Card>
     </div>

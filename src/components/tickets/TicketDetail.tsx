@@ -1,3 +1,4 @@
+
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +11,7 @@ import { es } from 'date-fns/locale';
 import { TicketChat } from './TicketChat';
 import { TicketStatusDropdown } from './TicketStatusDropdown';
 import { DueDateField } from './DueDateField';
+import { TicketOperations } from './TicketOperations';
 
 export function TicketDetail() {
   const { id } = useParams();
@@ -83,6 +85,12 @@ export function TicketDetail() {
         <div className="flex-1">
           <h1 className="text-2xl sm:text-3xl font-bold">Ticket #{ticket.ticket_number}</h1>
           <p className="text-muted-foreground">{ticket.title}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <TicketOperations 
+            ticketId={ticket.id} 
+            ticketNumber={ticket.ticket_number}
+          />
         </div>
       </div>
 

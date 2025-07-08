@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Settings, Upload, Image } from 'lucide-react';
+import { Image, Upload } from 'lucide-react';
 import { useCompanySettings, useUpdateCompanySettings } from '@/hooks/useCompanySettings';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,7 +15,6 @@ const Company = () => {
   const updateMutation = useUpdateCompanySettings();
   const { toast } = useToast();
   
-  const [projectName, setProjectName] = useState(settings?.project_name || 'SoporteTech');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [authBackgroundFile, setAuthBackgroundFile] = useState<File | null>(null);
   const [primaryColor, setPrimaryColor] = useState(settings?.primary_color || '#059669');
@@ -25,7 +24,6 @@ const Company = () => {
   // Update local state when settings data loads
   useState(() => {
     if (settings) {
-      setProjectName(settings.project_name || 'SoporteTech');
       setPrimaryColor(settings.primary_color || '#059669');
       setSecondaryColor(settings.secondary_color || '#10b981');
     }
@@ -84,7 +82,6 @@ const Company = () => {
       }
 
       const updates = {
-        project_name: projectName,
         logo_url: logoUrl,
         auth_background_url: authBackgroundUrl,
         primary_color: primaryColor,
@@ -118,27 +115,6 @@ const Company = () => {
       </div>
 
       <div className="grid gap-6">
-        {/* Información General */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              Información General
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="project-name">Nombre del Proyecto</Label>
-              <Input
-                id="project-name"
-                value={projectName}
-                onChange={(e) => setProjectName(e.target.value)}
-                placeholder="Nombre del proyecto"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Diseño y Branding */}
         <Card>
           <CardHeader>
