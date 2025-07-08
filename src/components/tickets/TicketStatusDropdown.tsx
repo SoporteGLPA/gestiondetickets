@@ -34,7 +34,7 @@ export function TicketStatusDropdown({ ticketId, currentStatus }: TicketStatusDr
   const queryClient = useQueryClient();
   const { data: customStatuses } = useTicketStatuses();
 
-  // Estados por defecto del sistema
+  // Solo usar estados por defecto del sistema
   const defaultStatuses: StatusOption[] = [
     { value: 'abierto', label: 'Abierto', color: '#ef4444', isClosed: false },
     { value: 'en_progreso', label: 'En Progreso', color: '#f59e0b', isClosed: false },
@@ -43,17 +43,17 @@ export function TicketStatusDropdown({ ticketId, currentStatus }: TicketStatusDr
     { value: 'cerrado', label: 'Cerrado', color: '#6b7280', isClosed: true },
   ];
 
-  // Combinar estados por defecto con estados personalizados
-  const allStatuses: StatusOption[] = [
-    ...defaultStatuses,
-    ...(customStatuses?.map(status => ({
-      value: status.name.toLowerCase().replace(/\s+/g, '_'),
-      label: status.name,
-      color: status.color || '#6366f1',
-      isCustom: true,
-      isClosed: status.is_closed_status
-    })) || [])
-  ];
+  // Agregar solo estados personalizados activos
+  const customStatusOptions: StatusOption[] = customStatuses?.map(status => ({
+    value: status.name.toLowerCase().replace(/\s+/g, '_'),
+    label: status.name,
+    color: status.color || '#6366f1',
+    isCustom: true,
+    isClosed: status.is_closed_status
+  })) || [];
+
+  // Combinar todos los estados sin duplicaciones
+  const allStatuses: StatusOption[] = [...defaultStatuses, ...customStatusOptions];
 
   const updateStatusMutation = useMutation({
     mutationFn: async (newStatus: string) => {
