@@ -102,7 +102,7 @@ export function TicketReportsTable() {
   const handleFilterChange = (key: keyof ReportFilters, value: string) => {
     setFilters(prev => ({
       ...prev,
-      [key]: value || undefined
+      [key]: value === 'all' ? undefined : value
     }));
   };
 
@@ -164,14 +164,14 @@ export function TicketReportsTable() {
               <div className="space-y-2">
                 <Label htmlFor="department-filter">Departamento</Label>
                 <Select
-                  value={filters.department_id || ''}
+                  value={filters.department_id || 'all'}
                   onValueChange={(value) => handleFilterChange('department_id', value)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar departamento" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos los departamentos</SelectItem>
+                    <SelectItem value="all">Todos los departamentos</SelectItem>
                     {departments?.map((dept) => (
                       <SelectItem key={dept.id} value={dept.id}>
                         {dept.name}
@@ -184,14 +184,14 @@ export function TicketReportsTable() {
               <div className="space-y-2">
                 <Label htmlFor="category-filter">Categoría</Label>
                 <Select
-                  value={filters.category_id || ''}
+                  value={filters.category_id || 'all'}
                   onValueChange={(value) => handleFilterChange('category_id', value)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar categoría" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todas las categorías</SelectItem>
+                    <SelectItem value="all">Todas las categorías</SelectItem>
                     {categories?.map((cat) => (
                       <SelectItem key={cat.id} value={cat.id}>
                         {cat.name}
@@ -204,14 +204,14 @@ export function TicketReportsTable() {
               <div className="space-y-2">
                 <Label htmlFor="status-filter">Estado</Label>
                 <Select
-                  value={filters.status || ''}
+                  value={filters.status || 'all'}
                   onValueChange={(value) => handleFilterChange('status', value)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar estado" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos los estados</SelectItem>
+                    <SelectItem value="all">Todos los estados</SelectItem>
                     <SelectItem value="abierto">Abierto</SelectItem>
                     <SelectItem value="en_progreso">En Progreso</SelectItem>
                     <SelectItem value="pendiente">Pendiente</SelectItem>
@@ -224,14 +224,14 @@ export function TicketReportsTable() {
               <div className="space-y-2">
                 <Label htmlFor="priority-filter">Prioridad</Label>
                 <Select
-                  value={filters.priority || ''}
+                  value={filters.priority || 'all'}
                   onValueChange={(value) => handleFilterChange('priority', value)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccionar prioridad" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todas las prioridades</SelectItem>
+                    <SelectItem value="all">Todas las prioridades</SelectItem>
                     <SelectItem value="baja">Baja</SelectItem>
                     <SelectItem value="media">Media</SelectItem>
                     <SelectItem value="alta">Alta</SelectItem>
