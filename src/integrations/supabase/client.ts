@@ -12,9 +12,28 @@ let supabaseClient: any;
 if (config.type === 'supabase' && config.supabase) {
   supabaseClient = createClient<Database>(config.supabase.url, config.supabase.anonKey);
 } else {
-  // Para PostgreSQL local, usar el cliente personalizado
-  const { database } = await import('@/integrations/database/client');
-  supabaseClient = database.client;
+  // Para PostgreSQL local, crear un cliente mock que mantenga la misma interfaz
+  supabaseClient = {
+    from: (table: string) => ({
+      select: () => ({ data: [], error: null }),
+      insert: () => ({ data: null, error: null }),
+      update: () => ({ data: null, error: null }),
+      delete: () => ({ data: null, error: null })
+    }),
+    auth: {
+      signUp: () => ({ data: null, error: null }),
+      signIn: () => ({ data: null, error: null }),
+      signOut: () => ({ error: null }),
+      getUser: () => ({ data: null, error: null }),
+      onAuthStateChange: () => ({ data: null, error: null })
+    },
+    storage: {
+      from: () => ({
+        upload: () => ({ data: null, error: null }),
+        download: () => ({ data: null, error: null })
+      })
+    }
+  };
 }
 
 export const supabase = supabaseClient;

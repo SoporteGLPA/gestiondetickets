@@ -28,30 +28,37 @@ const defaultConfig: DatabaseConfig = {
 const localConfig: DatabaseConfig = {
   type: 'postgres',
   postgres: {
-    host: localStorage.getItem('DB_HOST') || 'localhost',
-    port: parseInt(localStorage.getItem('DB_PORT') || '5432'),
-    database: localStorage.getItem('DB_NAME') || 'tickets_db',
-    username: localStorage.getItem('DB_USER') || 'postgres',
-    password: localStorage.getItem('DB_PASSWORD') || 'postgres',
+    host: (typeof window !== 'undefined' && localStorage.getItem('DB_HOST')) || 'localhost',
+    port: parseInt((typeof window !== 'undefined' && localStorage.getItem('DB_PORT')) || '5432'),
+    database: (typeof window !== 'undefined' && localStorage.getItem('DB_NAME')) || 'tickets_db',
+    username: (typeof window !== 'undefined' && localStorage.getItem('DB_USER')) || 'postgres',
+    password: (typeof window !== 'undefined' && localStorage.getItem('DB_PASSWORD')) || 'postgres',
     ssl: false
   }
 };
 
 // Función para obtener la configuración actual
 export function getDatabaseConfig(): DatabaseConfig {
+  if (typeof window === 'undefined') {
+    // En el servidor, usar configuración por defecto
+    return defaultConfig;
+  }
+  
   const useLocal = localStorage.getItem('USE_LOCAL_DB') === 'true';
   return useLocal ? localConfig : defaultConfig;
 }
 
 // Función para cambiar entre configuraciones
 export function toggleDatabaseMode(useLocal: boolean) {
-  localStorage.setItem('USE_LOCAL_DB', useLocal.toString());
-  window.location.reload(); // Reiniciar para aplicar cambios
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('USE_LOCAL_DB', useLocal.toString());
+    window.location.reload(); // Reiniciar para aplicar cambios
+  }
 }
 
 // Función para actualizar configuración de PostgreSQL
 export function updatePostgresConfig(config: DatabaseConfig['postgres']) {
-  if (config) {
+  if (typeof window !== 'undefined' && config) {
     localStorage.setItem('DB_HOST', config.host);
     localStorage.setItem('DB_PORT', config.port.toString());
     localStorage.setItem('DB_NAME', config.database);
