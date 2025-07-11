@@ -22,6 +22,7 @@ import { useState } from 'react';
 import { CreateTicketForm } from '@/components/forms/CreateTicketForm';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useMonthlyTicketStats, useResponseTimeStats } from '@/hooks/useDashboardStats';
 
 const getPriorityColor = (priority: string) => {
   switch (priority) {
@@ -49,6 +50,10 @@ export function Dashboard() {
   const { data: tickets = [] } = useTickets();
   const { data: users = [] } = useUsers();
   const { user, hasRole } = useAuth();
+  
+  // Usar hooks para datos reales de gráficos
+  const { data: monthlyStats = [], isLoading: loadingMonthly } = useMonthlyTicketStats();
+  const { data: responseTimeData = [], isLoading: loadingResponseTime } = useResponseTimeStats();
 
   // Filter tickets based on user role
   const userTickets = hasRole(['user']) ? tickets.filter(t => t.customer_id === user?.id) : tickets;
@@ -57,33 +62,6 @@ export function Dashboard() {
   const activeTickets = userTickets.filter(t => ['abierto', 'en_progreso', 'pendiente'].includes(t.status));
   const resolvedTickets = userTickets.filter(t => t.status === 'resuelto');
   const recentTickets = userTickets.slice(0, 4);
-
-  // Calculate monthly ticket data
-  const currentMonth = new Date().getMonth();
-  const monthlyTickets = userTickets.filter(ticket => {
-    const ticketMonth = new Date(ticket.created_at).getMonth();
-    return ticketMonth === currentMonth;
-  });
-
-  // Generate chart data (simplified for demo)
-  const ticketData = [
-    { name: 'Ene', total: 45, resueltos: 38 },
-    { name: 'Feb', total: 52, resueltos: 41 },
-    { name: 'Mar', total: 48, resueltos: 44 },
-    { name: 'Abr', total: 61, resueltos: 52 },
-    { name: 'May', total: 55, resueltos: 49 },
-    { name: 'Jun', total: monthlyTickets.length, resueltos: monthlyTickets.filter(t => t.status === 'resuelto').length },
-  ];
-
-  const responseTimeData = [
-    { name: 'Lun', tiempo: 2.5 },
-    { name: 'Mar', tiempo: 1.8 },
-    { name: 'Mié', tiempo: 3.2 },
-    { name: 'Jue', tiempo: 2.1 },
-    { name: 'Vie', tiempo: 1.9 },
-    { name: 'Sáb', tiempo: 4.1 },
-    { name: 'Dom', tiempo: 3.8 },
-  ];
 
   return (
     <div className="space-y-6">
@@ -141,20 +119,26 @@ export function Dashboard() {
           <CardHeader>
             <CardTitle>{hasRole(['user']) ? 'Mis Tickets por Mes' : 'Tickets por Mes'}</CardTitle>
             <CardDescription>
-              Comparación de tickets totales vs resueltos
+              Comparación de tickets totales vs resueltos (últimos 6 meses)
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={ticketData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="total" fill="#3b82f6" />
-                <Bar dataKey="resueltos" fill="#10b981" />
-              </BarChart>
-            </ResponsiveContainer>
+            {loadingMonthly ? (
+              <div className="flex items-center justify-center h-[300px]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={monthlyStats}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="total" fill="#3b82f6" name="Total" />
+                  <Bar dataKey="resueltos" fill="#10b981" name="Resueltos" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -162,25 +146,34 @@ export function Dashboard() {
           <CardHeader>
             <CardTitle>Tiempo de Respuesta</CardTitle>
             <CardDescription>
-              Promedio semanal en horas
+              Promedio semanal en horas (últimos 7 días)
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={responseTimeData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Line 
-                  type="monotone" 
-                  dataKey="tiempo" 
-                  stroke="#f59e0b" 
-                  strokeWidth={2}
-                  dot={{ fill: '#f59e0b' }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {loadingResponseTime ? (
+              <div className="flex items-center justify-center h-[300px]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={responseTimeData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip 
+                    formatter={(value: number) => [`${value} horas`, 'Tiempo promedio']}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="tiempo" 
+                    stroke="#f59e0b" 
+                    strokeWidth={2}
+                    dot={{ fill: '#f59e0b' }}
+                    name="Tiempo de respuesta"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>

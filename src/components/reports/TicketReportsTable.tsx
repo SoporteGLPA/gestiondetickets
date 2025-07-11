@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,15 +12,6 @@ import { useDepartments } from '@/hooks/useDepartments';
 import { useCategories } from '@/hooks/useCategories';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-
-// Extend jsPDF type to include autoTable
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
 
 export function TicketReportsTable() {
   const [filters, setFilters] = useState<ReportFilters>({});
@@ -51,52 +41,61 @@ export function TicketReportsTable() {
     }
   };
 
-  const exportToPDF = () => {
+  const exportToPDF = async () => {
     if (!tickets || tickets.length === 0) return;
 
-    const doc = new jsPDF();
-    
-    // Título del reporte
-    doc.setFontSize(20);
-    doc.text('Reporte de Tickets', 20, 20);
-    
-    // Fecha del reporte
-    doc.setFontSize(12);
-    doc.text(`Generado el: ${new Date().toLocaleDateString('es-ES')}`, 20, 30);
-    doc.text(`Total de tickets: ${tickets.length}`, 20, 40);
+    try {
+      // Importación dinámica para evitar problemas con SSR
+      const jsPDF = (await import('jspdf')).default;
+      const autoTable = (await import('jspdf-autotable')).default;
 
-    // Preparar datos para la tabla
-    const tableData = tickets.map(ticket => [
-      ticket.ticket_number,
-      ticket.title.length > 30 ? ticket.title.substring(0, 30) + '...' : ticket.title,
-      ticket.customer_name,
-      ticket.priority.toUpperCase(),
-      ticket.status.replace('_', ' ').toUpperCase(),
-      ticket.department_name,
-      ticket.category_name,
-      new Date(ticket.created_at).toLocaleDateString('es-ES'),
-    ]);
+      const doc = new jsPDF();
+      
+      // Título del reporte
+      doc.setFontSize(20);
+      doc.text('Reporte de Tickets', 20, 20);
+      
+      // Fecha del reporte
+      doc.setFontSize(12);
+      doc.text(`Generado el: ${new Date().toLocaleDateString('es-ES')}`, 20, 30);
+      doc.text(`Total de tickets: ${tickets.length}`, 20, 40);
 
-    // Crear tabla
-    doc.autoTable({
-      head: [['Número', 'Título', 'Cliente', 'Prioridad', 'Estado', 'Departamento', 'Categoría', 'Fecha']],
-      body: tableData,
-      startY: 50,
-      styles: {
-        fontSize: 8,
-        cellPadding: 2,
-      },
-      headStyles: {
-        fillColor: [59, 130, 246],
-        textColor: 255,
-      },
-      alternateRowStyles: {
-        fillColor: [249, 250, 251],
-      },
-    });
+      // Preparar datos para la tabla
+      const tableData = tickets.map(ticket => [
+        ticket.ticket_number,
+        ticket.title.length > 30 ? ticket.title.substring(0, 30) + '...' : ticket.title,
+        ticket.customer_name,
+        ticket.priority.toUpperCase(),
+        ticket.status.replace('_', ' ').toUpperCase(),
+        ticket.department_name,
+        ticket.category_name,
+        new Date(ticket.created_at).toLocaleDateString('es-ES'),
+      ]);
 
-    // Guardar el PDF
-    doc.save(`reporte-tickets-${new Date().toISOString().split('T')[0]}.pdf`);
+      // Crear tabla usando autoTable
+      autoTable(doc, {
+        head: [['Número', 'Título', 'Cliente', 'Prioridad', 'Estado', 'Departamento', 'Categoría', 'Fecha']],
+        body: tableData,
+        startY: 50,
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+        },
+        headStyles: {
+          fillColor: [59, 130, 246],
+          textColor: 255,
+        },
+        alternateRowStyles: {
+          fillColor: [249, 250, 251],
+        },
+      });
+
+      // Guardar el PDF
+      doc.save(`reporte-tickets-${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error generando PDF:', error);
+      alert('Error al generar el PDF. Por favor, intenta de nuevo.');
+    }
   };
 
   const handleFilterChange = (key: keyof ReportFilters, value: string) => {
