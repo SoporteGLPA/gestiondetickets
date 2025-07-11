@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,7 @@ import { Download, Filter, FileText } from 'lucide-react';
 import { useTicketReports, type ReportFilters } from '@/hooks/useTicketReports';
 import { useDepartments } from '@/hooks/useDepartments';
 import { useCategories } from '@/hooks/useCategories';
+import { useTicketStatuses } from '@/hooks/useTicketStatuses';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -20,6 +22,23 @@ export function TicketReportsTable() {
   const { data: tickets, isLoading } = useTicketReports(filters);
   const { data: departments } = useDepartments();
   const { data: categories } = useCategories();
+  const { data: customStatuses } = useTicketStatuses();
+
+  // Estados por defecto + personalizados
+  const defaultStatuses = [
+    { value: 'abierto', label: 'Abierto' },
+    { value: 'en_progreso', label: 'En Progreso' },
+    { value: 'pendiente', label: 'Pendiente' },
+    { value: 'resuelto', label: 'Resuelto' },
+    { value: 'cerrado', label: 'Cerrado' },
+  ];
+
+  const customStatusOptions = customStatuses?.map(status => ({
+    value: status.name.toLowerCase().replace(/\s+/g, '_'),
+    label: status.name,
+  })) || [];
+
+  const allStatuses = [...defaultStatuses, ...customStatusOptions];
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -41,45 +60,49 @@ export function TicketReportsTable() {
     }
   };
 
+  const formatTime = (hours?: number) => {
+    if (!hours) return 'N/A';
+    if (hours < 1) return `${Math.round(hours * 60)}m`;
+    if (hours < 24) return `${Math.round(hours * 100) / 100}h`;
+    return `${Math.round((hours / 24) * 100) / 100}d`;
+  };
+
   const exportToPDF = async () => {
     if (!tickets || tickets.length === 0) return;
 
     try {
-      // Importación dinámica para evitar problemas con SSR
       const jsPDF = (await import('jspdf')).default;
       const autoTable = (await import('jspdf-autotable')).default;
 
-      const doc = new jsPDF();
+      const doc = new jsPDF('landscape');
       
-      // Título del reporte
       doc.setFontSize(20);
       doc.text('Reporte de Tickets', 20, 20);
       
-      // Fecha del reporte
       doc.setFontSize(12);
       doc.text(`Generado el: ${new Date().toLocaleDateString('es-ES')}`, 20, 30);
       doc.text(`Total de tickets: ${tickets.length}`, 20, 40);
 
-      // Preparar datos para la tabla
       const tableData = tickets.map(ticket => [
         ticket.ticket_number,
-        ticket.title.length > 30 ? ticket.title.substring(0, 30) + '...' : ticket.title,
+        ticket.title.length > 25 ? ticket.title.substring(0, 25) + '...' : ticket.title,
         ticket.customer_name,
         ticket.priority.toUpperCase(),
         ticket.status.replace('_', ' ').toUpperCase(),
         ticket.department_name,
         ticket.category_name,
+        formatTime(ticket.response_time_hours),
+        formatTime(ticket.resolution_time_hours),
         new Date(ticket.created_at).toLocaleDateString('es-ES'),
       ]);
 
-      // Crear tabla usando autoTable
       autoTable(doc, {
-        head: [['Número', 'Título', 'Cliente', 'Prioridad', 'Estado', 'Departamento', 'Categoría', 'Fecha']],
+        head: [['Número', 'Título', 'Cliente', 'Prioridad', 'Estado', 'Departamento', 'Categoría', 'T. Respuesta', 'T. Resolución', 'Fecha']],
         body: tableData,
         startY: 50,
         styles: {
           fontSize: 8,
-          cellPadding: 2,
+          cellPadding: 1,
         },
         headStyles: {
           fillColor: [59, 130, 246],
@@ -90,7 +113,6 @@ export function TicketReportsTable() {
         },
       });
 
-      // Guardar el PDF
       doc.save(`reporte-tickets-${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (error) {
       console.error('Error generando PDF:', error);
@@ -211,11 +233,11 @@ export function TicketReportsTable() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Todos los estados</SelectItem>
-                    <SelectItem value="abierto">Abierto</SelectItem>
-                    <SelectItem value="en_progreso">En Progreso</SelectItem>
-                    <SelectItem value="pendiente">Pendiente</SelectItem>
-                    <SelectItem value="resuelto">Resuelto</SelectItem>
-                    <SelectItem value="cerrado">Cerrado</SelectItem>
+                    {allStatuses.map((status) => (
+                      <SelectItem key={status.value} value={status.value}>
+                        {status.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -268,7 +290,7 @@ export function TicketReportsTable() {
         )}
         
         <CardContent>
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -279,6 +301,8 @@ export function TicketReportsTable() {
                   <TableHead>Estado</TableHead>
                   <TableHead>Departamento</TableHead>
                   <TableHead>Categoría</TableHead>
+                  <TableHead>T. Respuesta</TableHead>
+                  <TableHead>T. Resolución</TableHead>
                   <TableHead>Creado</TableHead>
                 </TableRow>
               </TableHeader>
@@ -300,6 +324,16 @@ export function TicketReportsTable() {
                     </TableCell>
                     <TableCell>{ticket.department_name}</TableCell>
                     <TableCell>{ticket.category_name}</TableCell>
+                    <TableCell>
+                      <span className={ticket.response_time_hours ? 'text-blue-600 font-medium' : 'text-gray-400'}>
+                        {formatTime(ticket.response_time_hours)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className={ticket.resolution_time_hours ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                        {formatTime(ticket.resolution_time_hours)}
+                      </span>
+                    </TableCell>
                     <TableCell>
                       {formatDistanceToNow(new Date(ticket.created_at), { 
                         addSuffix: true, 

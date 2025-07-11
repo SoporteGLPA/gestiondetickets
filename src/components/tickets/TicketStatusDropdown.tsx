@@ -34,7 +34,7 @@ export function TicketStatusDropdown({ ticketId, currentStatus }: TicketStatusDr
   const queryClient = useQueryClient();
   const { data: customStatuses } = useTicketStatuses();
 
-  // Solo usar estados por defecto del sistema
+  // Estados por defecto del sistema
   const defaultStatuses: StatusOption[] = [
     { value: 'abierto', label: 'Abierto', color: '#ef4444', isClosed: false },
     { value: 'en_progreso', label: 'En Progreso', color: '#f59e0b', isClosed: false },
@@ -43,7 +43,7 @@ export function TicketStatusDropdown({ ticketId, currentStatus }: TicketStatusDr
     { value: 'cerrado', label: 'Cerrado', color: '#6b7280', isClosed: true },
   ];
 
-  // Agregar solo estados personalizados activos
+  // Estados personalizados activos
   const customStatusOptions: StatusOption[] = customStatuses?.map(status => ({
     value: status.name.toLowerCase().replace(/\s+/g, '_'),
     label: status.name,
@@ -52,7 +52,7 @@ export function TicketStatusDropdown({ ticketId, currentStatus }: TicketStatusDr
     isClosed: status.is_closed_status
   })) || [];
 
-  // Combinar todos los estados sin duplicaciones
+  // Combinar todos los estados
   const allStatuses: StatusOption[] = [...defaultStatuses, ...customStatusOptions];
 
   const updateStatusMutation = useMutation({
@@ -75,6 +75,7 @@ export function TicketStatusDropdown({ ticketId, currentStatus }: TicketStatusDr
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ticket', ticketId] });
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
+      queryClient.invalidateQueries({ queryKey: ['ticket-reports'] });
       toast({
         title: "Estado actualizado",
         description: "El estado del ticket ha sido actualizado exitosamente",

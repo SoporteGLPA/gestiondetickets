@@ -21,6 +21,8 @@ export interface TicketReportData {
   assignee_name?: string;
   category_name?: string;
   department_name?: string;
+  response_time_hours?: number;
+  resolution_time_hours?: number;
 }
 
 export interface ReportFilters {
@@ -31,6 +33,24 @@ export interface ReportFilters {
   priority?: string;
   date_from?: string;
   date_to?: string;
+}
+
+function calculateResponseTime(createdAt: string, firstCommentAt?: string): number | undefined {
+  if (!firstCommentAt) return undefined;
+  
+  const created = new Date(createdAt);
+  const firstComment = new Date(firstCommentAt);
+  
+  return Math.round((firstComment.getTime() - created.getTime()) / (1000 * 60 * 60 * 100)) / 100;
+}
+
+function calculateResolutionTime(createdAt: string, resolvedAt?: string): number | undefined {
+  if (!resolvedAt) return undefined;
+  
+  const created = new Date(createdAt);
+  const resolved = new Date(resolvedAt);
+  
+  return Math.round((resolved.getTime() - created.getTime()) / (1000 * 60 * 60 * 100)) / 100;
 }
 
 export function useTicketReports(filters: ReportFilters) {
@@ -78,12 +98,34 @@ export function useTicketReports(filters: ReportFilters) {
         query = query.lte('created_at', filters.date_to);
       }
 
-      const { data, error } = await query.order('created_at', { ascending: false });
+      const { data: tickets, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
 
+      if (!tickets) return [];
+
+      // Obtener el primer comentario de cada ticket para calcular tiempo de respuesta
+      const ticketIds = tickets.map(t => t.id);
+      const { data: firstComments, error: commentsError } = await supabase
+        .from('ticket_comments')
+        .select('ticket_id, created_at')
+        .in('ticket_id', ticketIds)
+        .order('created_at', { ascending: true });
+
+      if (commentsError) {
+        console.warn('Error fetching comments for response time:', commentsError);
+      }
+
+      // Crear un mapa de primer comentario por ticket
+      const firstCommentMap = new Map();
+      firstComments?.forEach(comment => {
+        if (!firstCommentMap.has(comment.ticket_id)) {
+          firstCommentMap.set(comment.ticket_id, comment.created_at);
+        }
+      });
+
       // Transformar datos para el reporte
-      return data?.map(ticket => ({
+      return tickets.map(ticket => ({
         id: ticket.id,
         ticket_number: ticket.ticket_number,
         title: ticket.title,
@@ -98,6 +140,8 @@ export function useTicketReports(filters: ReportFilters) {
         assignee_name: ticket.profiles_assignee?.full_name || 'Sin asignar',
         category_name: ticket.ticket_categories?.name || 'Sin categoría',
         department_name: ticket.departments?.name || 'Sin departamento',
+        response_time_hours: calculateResponseTime(ticket.created_at, firstCommentMap.get(ticket.id)),
+        resolution_time_hours: calculateResolutionTime(ticket.created_at, ticket.resolved_at),
       })) as TicketReportData[];
     },
   });
