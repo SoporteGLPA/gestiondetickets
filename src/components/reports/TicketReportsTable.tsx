@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { toast } from '@/hooks/use-toast';
 import {
   Select,
   SelectContent,
@@ -25,7 +26,6 @@ import {
 import { Download, Filter, X, FileText, Calendar } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-import jsPDF from 'jspdf';
 
 interface Filters {
   title?: string;
