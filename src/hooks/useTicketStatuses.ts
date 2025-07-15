@@ -43,13 +43,34 @@ export function useCreateTicketStatus() {
       is_closed_status?: boolean;
       sort_order?: number;
     }) => {
+      // Verificar si ya existe un estado con el mismo nombre
+      const { data: existing, error: checkError } = await supabase
+        .from('custom_ticket_statuses')
+        .select('id')
+        .eq('name', data.name)
+        .eq('is_active', true)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError;
+      }
+
+      if (existing) {
+        throw new Error(`Ya existe un estado con el nombre "${data.name}"`);
+      }
+
       const { data: result, error } = await supabase
         .from('custom_ticket_statuses')
         .insert(data)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error(`Ya existe un estado con el nombre "${data.name}"`);
+        }
+        throw error;
+      }
       return result;
     },
     onSuccess: () => {
@@ -59,11 +80,12 @@ export function useCreateTicketStatus() {
         description: "El estado de ticket ha sido creado exitosamente",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error('Error creating ticket status:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo crear el estado de ticket",
+        description: error.message || "No se pudo crear el estado de ticket",
       });
     },
   });
@@ -75,6 +97,25 @@ export function useUpdateTicketStatus() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: { id: string; [key: string]: any }) => {
+      // Si se está actualizando el nombre, verificar que no exista otro con el mismo nombre
+      if (updates.name) {
+        const { data: existing, error: checkError } = await supabase
+          .from('custom_ticket_statuses')
+          .select('id')
+          .eq('name', updates.name)
+          .eq('is_active', true)
+          .neq('id', id)
+          .single();
+
+        if (checkError && checkError.code !== 'PGRST116') {
+          throw checkError;
+        }
+
+        if (existing) {
+          throw new Error(`Ya existe un estado con el nombre "${updates.name}"`);
+        }
+      }
+
       const { data, error } = await supabase
         .from('custom_ticket_statuses')
         .update(updates)
@@ -82,7 +123,12 @@ export function useUpdateTicketStatus() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error(`Ya existe un estado con el nombre "${updates.name}"`);
+        }
+        throw error;
+      }
       return data;
     },
     onSuccess: () => {
@@ -92,11 +138,12 @@ export function useUpdateTicketStatus() {
         description: "El estado de ticket ha sido actualizado exitosamente",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      console.error('Error updating ticket status:', error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo actualizar el estado de ticket",
+        description: error.message || "No se pudo actualizar el estado de ticket",
       });
     },
   });

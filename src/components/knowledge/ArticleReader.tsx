@@ -7,7 +7,7 @@ import { useKnowledgeArticle, useArticleAttachments, useArticleLinks } from '@/h
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Star, Eye, ThumbsUp, ThumbsDown, Paperclip, ExternalLink, Download, File, Image, FileText } from 'lucide-react';
+import { ArrowLeft, Star, Eye, ThumbsUp, ThumbsDown, Paperclip, ExternalLink, Download, File, Image, FileText, Copy } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useState, useEffect } from 'react';
@@ -201,6 +201,22 @@ export function ArticleReader() {
     }
   };
 
+  const copyLinkToClipboard = async (url: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({
+        title: "Enlace copiado",
+        description: "El enlace ha sido copiado al portapapeles",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo copiar el enlace",
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -356,23 +372,18 @@ export function ArticleReader() {
                       {link.description && (
                         <p className="text-sm text-gray-600 mb-2 line-clamp-2">{link.description}</p>
                       )}
-                      <a 
-                        href={link.url}
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-xs text-blue-600 hover:text-blue-800 underline break-all"
-                      >
+                      <p className="text-xs text-blue-600 break-all font-mono bg-blue-50 p-1 rounded">
                         {link.url}
-                      </a>
+                      </p>
                     </div>
                     <Button 
                       size="sm" 
                       variant="outline"
-                      onClick={() => window.open(link.url, '_blank', 'noopener,noreferrer')}
+                      onClick={() => copyLinkToClipboard(link.url)}
                       className="ml-3 hover:bg-green-50 flex-shrink-0"
                     >
-                      <ExternalLink className="h-4 w-4 mr-1" />
-                      Abrir
+                      <Copy className="h-4 w-4 mr-1" />
+                      Copiar
                     </Button>
                   </div>
                 </div>
