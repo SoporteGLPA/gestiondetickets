@@ -1,10 +1,9 @@
 
-import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { useTicketStatuses } from '@/hooks/useTicketStatuses';
+import { useTicketStatusOptions } from '@/hooks/useTicketStatusOptions';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -12,7 +11,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
 import { ChevronDown } from 'lucide-react';
 
 interface TicketStatusDropdownProps {
@@ -20,48 +18,19 @@ interface TicketStatusDropdownProps {
   currentStatus: string;
 }
 
-interface StatusOption {
-  value: string;
-  label: string;
-  color: string;
-  isCustom?: boolean;
-  isClosed?: boolean;
-}
-
 export function TicketStatusDropdown({ ticketId, currentStatus }: TicketStatusDropdownProps) {
   const { hasRole } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { data: customStatuses } = useTicketStatuses();
-
-  // Estados por defecto del sistema
-  const defaultStatuses: StatusOption[] = [
-    { value: 'abierto', label: 'Abierto', color: '#ef4444', isClosed: false },
-    { value: 'en_progreso', label: 'En Progreso', color: '#f59e0b', isClosed: false },
-    { value: 'pendiente', label: 'Pendiente', color: '#8b5cf6', isClosed: false },
-    { value: 'resuelto', label: 'Resuelto', color: '#10b981', isClosed: true },
-    { value: 'cerrado', label: 'Cerrado', color: '#6b7280', isClosed: true },
-  ];
-
-  // Estados personalizados activos
-  const customStatusOptions: StatusOption[] = customStatuses?.map(status => ({
-    value: status.name.toLowerCase().replace(/\s+/g, '_'),
-    label: status.name,
-    color: status.color || '#6366f1',
-    isCustom: true,
-    isClosed: status.is_closed_status
-  })) || [];
-
-  // Combinar todos los estados
-  const allStatuses: StatusOption[] = [...defaultStatuses, ...customStatusOptions];
+  const { data: statusOptions } = useTicketStatusOptions();
 
   const updateStatusMutation = useMutation({
     mutationFn: async (newStatus: string) => {
-      const selectedStatus = allStatuses.find(s => s.value === newStatus);
+      const selectedStatus = statusOptions?.find(s => s.value === newStatus);
       const updateData: any = { status: newStatus };
       
-      // Si es un estado de cierre o resuelto, marcar como resuelto
-      if (newStatus === 'resuelto' || newStatus === 'cerrado' || selectedStatus?.isClosed) {
+      // Si es un estado de cierre, marcar como resuelto
+      if (selectedStatus?.isClosed) {
         updateData.resolved_at = new Date().toISOString();
       }
 
@@ -90,7 +59,7 @@ export function TicketStatusDropdown({ ticketId, currentStatus }: TicketStatusDr
     },
   });
 
-  const currentStatusOption = allStatuses.find(option => option.value === currentStatus);
+  const currentStatusOption = statusOptions?.find(option => option.value === currentStatus);
 
   if (!hasRole(['admin', 'agent'])) {
     return (
@@ -106,20 +75,28 @@ export function TicketStatusDropdown({ ticketId, currentStatus }: TicketStatusDr
     );
   }
 
+  if (!statusOptions || statusOptions.length === 0) {
+    return (
+      <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+        Sin estados configurados
+      </div>
+    );
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" className="flex items-center gap-2">
           <div 
             className="w-3 h-3 rounded-full"
-            style={{ backgroundColor: currentStatusOption?.color }}
+            style={{ backgroundColor: currentStatusOption?.color || '#6b7280' }}
           />
           <span>{currentStatusOption?.label || currentStatus}</span>
           <ChevronDown className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        {allStatuses.map((option) => (
+        {statusOptions.map((option) => (
           <DropdownMenuItem
             key={option.value}
             onClick={() => updateStatusMutation.mutate(option.value)}
@@ -131,11 +108,6 @@ export function TicketStatusDropdown({ ticketId, currentStatus }: TicketStatusDr
               style={{ backgroundColor: option.color }}
             />
             <span>{option.label}</span>
-            {option.isCustom && (
-              <Badge variant="outline" className="ml-auto text-xs">
-                Personalizado
-              </Badge>
-            )}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>

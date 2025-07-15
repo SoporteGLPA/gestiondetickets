@@ -31,7 +31,6 @@ interface TicketChatProps {
 export function TicketChat({ ticketId }: TicketChatProps) {
   const { user, profile } = useAuth();
   const [newComment, setNewComment] = useState('');
-  const [isInternal, setIsInternal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -56,7 +55,7 @@ export function TicketChat({ ticketId }: TicketChatProps) {
   });
 
   const addCommentMutation = useMutation({
-    mutationFn: async ({ content, isInternal }: { content: string; isInternal: boolean }) => {
+    mutationFn: async (content: string) => {
       if (!user) throw new Error('User not authenticated');
 
       const { data, error } = await supabase
@@ -65,7 +64,7 @@ export function TicketChat({ ticketId }: TicketChatProps) {
           ticket_id: ticketId,
           content,
           user_id: user.id,
-          is_internal: isInternal,
+          is_internal: false, // Siempre false ya que eliminamos la opción
         })
         .select(`
           *,
@@ -163,10 +162,7 @@ export function TicketChat({ ticketId }: TicketChatProps) {
     e.preventDefault();
     if (!newComment.trim()) return;
 
-    addCommentMutation.mutate({
-      content: newComment.trim(),
-      isInternal,
-    });
+    addCommentMutation.mutate(newComment.trim());
   };
 
   const canSeeInternalComments = profile?.role === 'admin' || profile?.role === 'agent';
@@ -221,11 +217,6 @@ export function TicketChat({ ticketId }: TicketChatProps) {
                     <span className="text-xs font-medium text-muted-foreground">
                       {comment.profiles?.full_name || 'Usuario'}
                     </span>
-                    {comment.is_internal && (
-                      <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
-                        Interno
-                      </span>
-                    )}
                     <span className="text-xs text-muted-foreground">
                       {formatDistanceToNow(new Date(comment.created_at), {
                         addSuffix: true,
@@ -237,8 +228,6 @@ export function TicketChat({ ticketId }: TicketChatProps) {
                     className={`rounded-lg px-3 py-2 text-sm ${
                       comment.user_id === user?.id
                         ? 'bg-emerald-600 text-white'
-                        : comment.is_internal
-                        ? 'bg-orange-50 border border-orange-200'
                         : 'bg-gray-100 text-gray-900'
                     }`}
                   >
@@ -252,20 +241,6 @@ export function TicketChat({ ticketId }: TicketChatProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
-          {canSeeInternalComments && (
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="internal"
-                checked={isInternal}
-                onChange={(e) => setIsInternal(e.target.checked)}
-                className="rounded border-emerald-300 focus:ring-emerald-500"
-              />
-              <label htmlFor="internal" className="text-sm text-muted-foreground">
-                Comentario interno (solo visible para agentes y administradores)
-              </label>
-            </div>
-          )}
           <div className="flex gap-2">
             <Input
               value={newComment}
