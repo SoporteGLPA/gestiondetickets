@@ -1,4 +1,3 @@
-
 import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { RichTextEditor } from '@/components/forms/RichTextEditor';
 import { FileUpload } from '@/components/forms/FileUpload';
 import { Paperclip } from 'lucide-react';
+import { useFileUpload } from '@/hooks/useFileUpload';
 
 const ticketSchema = z.object({
   title: z.string().min(1, 'El título es requerido'),
@@ -42,6 +42,7 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
   const { data: departmentCategories } = useDepartmentCategories(selectedDepartmentId);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const { uploadMultipleFiles } = useFileUpload();
 
   const form = useForm<TicketFormData>({
     resolver: zodResolver(ticketSchema),
@@ -62,7 +63,7 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
     try {
       console.log('Form data before processing:', data);
 
-      // Validar que el departamento existe
+      // Validate department exists
       const departmentExists = departments?.some(dept => dept.id === data.department_id);
       if (!departmentExists) {
         toast({
@@ -74,7 +75,14 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
         return;
       }
 
-      // Construir el objeto del ticket
+      // Upload files if any
+      let uploadedFiles: any[] = [];
+      if (attachedFiles.length > 0) {
+        uploadedFiles = await uploadMultipleFiles(attachedFiles);
+        console.log('Files uploaded:', uploadedFiles);
+      }
+
+      // Build ticket data
       const ticketData: any = {
         title: data.title,
         description: data.description,
@@ -82,7 +90,7 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
         department_id: data.department_id,
         customer_id: user.id,
         category_id: data.category_id,
-        attachments: attachedFiles
+        attachments: uploadedFiles
       };
 
       console.log('Final ticket data to be sent:', ticketData);

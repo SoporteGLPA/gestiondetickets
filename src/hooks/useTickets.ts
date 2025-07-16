@@ -108,54 +108,50 @@ export function useCreateTicket() {
       department_id?: string;
       category_id?: string;
       customer_id: string;
+      attachments?: any[];
     }) => {
       console.log('Creating ticket with data:', ticketData);
       
-      // Crear un objeto limpio solo con los campos necesarios
+      // Create clean ticket data
       const cleanTicketData: any = {
         title: ticketData.title,
         description: ticketData.description,
         priority: ticketData.priority,
         department_id: ticketData.department_id,
         customer_id: ticketData.customer_id,
-        ticket_number: '' // Asegurar que ticket_number esté vacío para que el trigger lo genere
+        ticket_number: ''
       };
 
-      // Solo incluir category_id si existe, no está vacío y es un UUID válido
+      // Include category_id if exists and is valid UUID
       if (ticketData.category_id && 
           typeof ticketData.category_id === 'string' && 
           ticketData.category_id.trim() !== '' &&
           /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(ticketData.category_id)) {
         
         try {
-          // Verificar que la categoría exista en la base de datos
           const { data: category, error: categoryError } = await supabase
             .from('ticket_categories')
             .select('id')
             .eq('id', ticketData.category_id)
-            .maybeSingle(); // Usar maybeSingle en lugar de single para evitar errores 406
+            .maybeSingle();
 
           if (categoryError) {
             console.error('Error verificando categoría:', categoryError);
-            // Continuar sin categoría en lugar de fallar
             console.warn('No se pudo verificar la categoría, continuando sin categoría');
           } else if (!category) {
             console.warn('Categoría no encontrada, continuando sin categoría:', ticketData.category_id);
           } else {
-            // Solo establecer el category_id si la categoría existe
             cleanTicketData.category_id = ticketData.category_id;
           }
         } catch (error) {
           console.error('Error al verificar la categoría:', error);
-          // Continuar sin categoría en caso de error
           console.warn('Continuando sin categoría debido a un error de verificación');
         }
       }
 
-
       console.log('Sending to database:', cleanTicketData);
 
-      const { data, error } = await supabase
+      const { data: ticket, error } = await supabase
         .from('tickets')
         .insert([cleanTicketData])
         .select()
@@ -165,9 +161,32 @@ export function useCreateTicket() {
         console.error('Database error creating ticket:', error);
         throw error;
       }
+
+      console.log('Ticket created successfully:', ticket);
+
+      // Save attachments if any
+      if (ticketData.attachments && ticketData.attachments.length > 0) {
+        const attachmentPromises = ticketData.attachments.map(async (file) => {
+          const { error: attachmentError } = await supabase
+            .from('ticket_attachments')
+            .insert({
+              ticket_id: ticket.id,
+              file_name: file.name,
+              file_path: file.path,
+              file_size: file.size,
+              mime_type: file.type,
+              uploaded_by: ticketData.customer_id
+            });
+
+          if (attachmentError) {
+            console.error('Error saving attachment:', attachmentError);
+          }
+        });
+
+        await Promise.all(attachmentPromises);
+      }
       
-      console.log('Ticket created successfully:', data);
-      return data;
+      return ticket;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tickets'] });
