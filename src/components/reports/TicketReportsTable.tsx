@@ -54,9 +54,11 @@ export function TicketReportsTable() {
   const { data: statusOptions } = useTicketStatusOptions();
 
   const handleFilterChange = (key: keyof ReportFilters, value: string | undefined) => {
+    // Convert "all" placeholder back to undefined
+    const actualValue = value === 'all' ? undefined : value;
     setFilters(prevFilters => ({
       ...prevFilters,
-      [key]: value,
+      [key]: actualValue,
     }));
   };
 
@@ -208,12 +210,12 @@ export function TicketReportsTable() {
             className="focus:ring-emerald-500 focus:border-emerald-500"
           />
 
-          <Select value={filters.department_id || ''} onValueChange={(value) => handleFilterChange('department_id', value || undefined)}>
+          <Select value={filters.department_id || 'all'} onValueChange={(value) => handleFilterChange('department_id', value)}>
             <SelectTrigger>
               <SelectValue placeholder="Departamento" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
               {departments?.map((dept) => (
                 <SelectItem key={dept.id} value={dept.id}>
                   {dept.name}
@@ -222,12 +224,12 @@ export function TicketReportsTable() {
             </SelectContent>
           </Select>
 
-          <Select value={filters.category_id || ''} onValueChange={(value) => handleFilterChange('category_id', value || undefined)}>
+          <Select value={filters.category_id || 'all'} onValueChange={(value) => handleFilterChange('category_id', value)}>
             <SelectTrigger>
               <SelectValue placeholder="Categoría" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todas</SelectItem>
+              <SelectItem value="all">Todas</SelectItem>
               {categories?.map((cat) => (
                 <SelectItem key={cat.id} value={cat.id}>
                   {cat.name}
@@ -236,12 +238,12 @@ export function TicketReportsTable() {
             </SelectContent>
           </Select>
 
-          <Select value={filters.status || ''} onValueChange={(value) => handleFilterChange('status', value || undefined)}>
+          <Select value={filters.status || 'all'} onValueChange={(value) => handleFilterChange('status', value)}>
             <SelectTrigger>
               <SelectValue placeholder="Estado" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todos</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
               {statusOptions?.map((status) => (
                 <SelectItem key={status.value} value={status.value}>
                   <div className="flex items-center gap-2">
@@ -256,12 +258,12 @@ export function TicketReportsTable() {
             </SelectContent>
           </Select>
 
-          <Select value={filters.priority || ''} onValueChange={(value) => handleFilterChange('priority', value || undefined)}>
+          <Select value={filters.priority || 'all'} onValueChange={(value) => handleFilterChange('priority', value)}>
             <SelectTrigger>
               <SelectValue placeholder="Prioridad" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Todas</SelectItem>
+              <SelectItem value="all">Todas</SelectItem>
               <SelectItem value="alta">Alta</SelectItem>
               <SelectItem value="media">Media</SelectItem>
               <SelectItem value="baja">Baja</SelectItem>
