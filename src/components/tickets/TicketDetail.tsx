@@ -1,4 +1,3 @@
-
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,6 +11,8 @@ import { TicketChat } from './TicketChat';
 import { TicketStatusDropdown } from './TicketStatusDropdown';
 import { DueDateField } from './DueDateField';
 import { TicketOperations } from './TicketOperations';
+import { TicketAttachments } from './TicketAttachments';
+import { TicketDescription } from './TicketDescription';
 
 export function TicketDetail() {
   const { id } = useParams();
@@ -149,7 +150,7 @@ export function TicketDetail() {
               <CardTitle>Descripción</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="whitespace-pre-wrap">{ticket.description}</p>
+              <TicketDescription description={ticket.description} />
             </CardContent>
           </Card>
 
@@ -163,6 +164,9 @@ export function TicketDetail() {
               </CardContent>
             </Card>
           )}
+
+          {/* Archivos Adjuntos */}
+          <TicketAttachments ticketId={ticket.id} />
 
           {/* Chat Section */}
           <Card>
@@ -210,7 +214,6 @@ export function TicketDetail() {
                 </div>
               )}
 
-              {/* Fecha de Vencimiento */}
               <DueDateField 
                 ticketId={ticket.id} 
                 currentDueDate={ticket.due_date}
