@@ -1,12 +1,11 @@
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -14,13 +13,16 @@ import { useCreateTicket } from '@/hooks/useTickets';
 import { useDepartments, useDepartmentCategories } from '@/hooks/useDepartments';
 import { useCategories } from '@/hooks/useCategories';
 import { useAuth } from '@/hooks/useAuth';
+import { RichTextEditor } from '@/components/forms/RichTextEditor';
+import { FileUpload } from '@/components/forms/FileUpload';
+import { Paperclip } from 'lucide-react';
 
 const ticketSchema = z.object({
   title: z.string().min(1, 'El título es requerido'),
   description: z.string().min(1, 'La descripción es requerida'),
   priority: z.enum(['baja', 'media', 'alta']),
   department_id: z.string().min(1, 'El departamento es requerido'),
-  category_id: z.string().optional(),
+  category_id: z.string().min(1, 'La categoría es requerida'),
 });
 
 type TicketFormData = z.infer<typeof ticketSchema>;
@@ -39,6 +41,7 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<string>('');
   const { data: departmentCategories } = useDepartmentCategories(selectedDepartmentId);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
 
   const form = useForm<TicketFormData>({
     resolver: zodResolver(ticketSchema),
@@ -47,7 +50,7 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
       description: '',
       priority: 'media',
       department_id: '',
-      category_id: undefined,
+      category_id: '',
     },
   });
 
@@ -71,41 +74,30 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
         return;
       }
 
-      // Construir el objeto base del ticket
+      // Construir el objeto del ticket
       const ticketData: any = {
         title: data.title,
         description: data.description,
         priority: data.priority,
         department_id: data.department_id,
         customer_id: user.id,
+        category_id: data.category_id,
+        attachments: attachedFiles
       };
-
-      // Manejar la categoría si está presente
-      if (data.category_id && data.category_id !== 'none') {
-        // Solo incluir el category_id si parece ser un UUID válido
-        // La validación final se hará en el hook useTickets
-        if (/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(data.category_id)) {
-          ticketData.category_id = data.category_id;
-          console.log('Category ID a enviar:', data.category_id);
-        } else {
-          console.warn('Formato de ID de categoría inválido, continuando sin categoría');
-        }
-      }
 
       console.log('Final ticket data to be sent:', ticketData);
 
-      // Usar mutate en lugar de mutateAsync para manejar el estado de carga correctamente
       await createTicketMutation.mutate(ticketData, {
         onSuccess: () => {
-          // Resetear el formulario solo si la mutación fue exitosa
           form.reset({
             title: '',
             description: '',
             priority: 'media',
             department_id: '',
-            category_id: undefined,
+            category_id: '',
           });
           setSelectedDepartmentId('');
+          setAttachedFiles([]);
           onOpenChange(false);
         },
         onSettled: () => {
@@ -116,7 +108,6 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
     } catch (error) {
       console.error('Error al crear el ticket:', error);
       setIsSubmitting(false);
-      // No es necesario mostrar un toast aquí ya que useCreateTicket ya maneja el error
     }
   };
 
@@ -124,21 +115,20 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
     setSelectedDepartmentId(departmentId);
     form.setValue('department_id', departmentId);
     // Reset category when department changes
-    form.setValue('category_id', undefined);
+    form.setValue('category_id', '');
   };
 
   const handleCategoryChange = (categoryId: string) => {
-    // Si se selecciona "none", establecer como undefined
-    if (categoryId === 'none') {
-      form.setValue('category_id', undefined);
-    } else {
-      form.setValue('category_id', categoryId);
-    }
+    form.setValue('category_id', categoryId);
   };
+
+  const availableCategories = selectedDepartmentId && departmentCategories && departmentCategories.length > 0 
+    ? departmentCategories 
+    : categories || [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Crear Nuevo Ticket</DialogTitle>
         </DialogHeader>
@@ -165,10 +155,10 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
                 <FormItem>
                   <FormLabel>Descripción</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Describa el problema detalladamente" 
-                      className="min-h-[100px]"
-                      {...field} 
+                    <RichTextEditor
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Describa el problema detalladamente. Puede pegar imágenes directamente aquí."
                     />
                   </FormControl>
                   <FormMessage />
@@ -201,73 +191,36 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
               )}
             />
 
-            {selectedDepartmentId && departmentCategories && departmentCategories.length > 0 && (
-              <FormField
-                control={form.control}
-                name="category_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Categoría del Departamento (Opcional)</FormLabel>
-                    <Select onValueChange={handleCategoryChange} value={field.value || 'none'}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccione una categoría (opcional)" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">Sin categoría</SelectItem>
-                        {departmentCategories.map((category) => (
-                          <SelectItem key={category.id} value={category.id}>
-                            <div className="flex items-center gap-2">
-                              <div 
-                                className="w-3 h-3 rounded-full" 
-                                style={{ backgroundColor: category.color }}
-                              />
-                              {category.name}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
-
-            {(!selectedDepartmentId || !departmentCategories || departmentCategories.length === 0) && categories && categories.length > 0 && (
-              <FormField
-                control={form.control}
-                name="category_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Categoría General (Opcional)</FormLabel>
-                    <Select onValueChange={handleCategoryChange} value={field.value || 'none'}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccione una categoría (opcional)" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">Sin categoría</SelectItem>
-                        {categories.map((category) => (
-                          <SelectItem key={category.id} value={category.id}>
-                            <div className="flex items-center gap-2">
-                              <div 
-                                className="w-3 h-3 rounded-full" 
-                                style={{ backgroundColor: category.color }}
-                              />
-                              {category.name}
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+            <FormField
+              control={form.control}
+              name="category_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Categoría *</FormLabel>
+                  <Select onValueChange={handleCategoryChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccione una categoría" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {availableCategories.map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          <div className="flex items-center gap-2">
+                            <div 
+                              className="w-3 h-3 rounded-full" 
+                              style={{ backgroundColor: category.color }}
+                            />
+                            {category.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <FormField
               control={form.control}
@@ -292,15 +245,26 @@ export function CreateTicketForm({ open, onOpenChange }: CreateTicketFormProps) 
               )}
             />
 
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Archivos Adjuntos</label>
+              <FileUpload
+                files={attachedFiles}
+                onFilesChange={setAttachedFiles}
+                maxFiles={5}
+                maxSize={10 * 1024 * 1024} // 10MB
+                accept="image/*,.pdf,.doc,.docx,.txt"
+              />
+            </div>
+
             <div className="flex justify-end space-x-2">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
               <Button 
                 type="submit" 
-                disabled={createTicketMutation.isPending}
+                disabled={createTicketMutation.isPending || isSubmitting}
               >
-                {createTicketMutation.isPending ? 'Creando...' : 'Crear Ticket'}
+                {createTicketMutation.isPending || isSubmitting ? 'Creando...' : 'Crear Ticket'}
               </Button>
             </div>
           </form>
